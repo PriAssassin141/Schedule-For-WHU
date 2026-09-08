@@ -1,6 +1,6 @@
 # 表里珞珈 · Schedule-For-WHU
 
-> 一款为**武汉大学研究生**设计的课表 App：全周同屏、上下翻页、液态玻璃界面。
+> 一款为**武汉大学研究生**设计的课表 App：本App由DeepSeek-v4.1-flash-expires-on-0910与DeepSeek Harness鼎力支持。
 > 使用 Flutter / Dart 开发，数据全部保存在本地。
 
 <p align="left">
