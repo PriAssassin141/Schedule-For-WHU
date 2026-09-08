@@ -2,8 +2,9 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:class_manager/main.dart';
 import 'package:class_manager/state/app_state.dart';
+import 'package:class_manager/utils/greeting.dart';
 
-/// “我的”页：个性化入口 + 「联系作者 / 关于软件 / 检查更新」分组卡片。
+/// “我的”页：问候语 + 个性化入口 + 「获取源码 / 联系作者 / 关于软件 / 检查更新 / 隐私政策」。
 void main() {
   Future<void> openMine(WidgetTester tester) async {
     final state = AppState.memory();
@@ -14,6 +15,27 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets('我的页：按时间与姓名问候', (WidgetTester tester) async {
+    final state = AppState.memory();
+    state.browseWeek = 1;
+    await state.updateSettings(state.settings.copyWith(userName: '闫梓萱'));
+
+    await tester.pumpWidget(ClassManagerApp(state: state));
+    await tester.pump();
+    await tester.tap(find.text('我的'));
+    await tester.pumpAndSettle();
+
+    final greeting = greetingFor(DateTime.now());
+    expect(find.text(greeting.withName('闫梓萱')), findsOneWidget);
+    expect(find.textContaining(greeting.reminder), findsOneWidget);
+  });
+
+  testWidgets('我的页：未填姓名时只显示时段问候', (WidgetTester tester) async {
+    await openMine(tester);
+    final greeting = greetingFor(DateTime.now());
+    expect(find.text(greeting.hello), findsOneWidget);
+  });
+
   testWidgets('我的页：分组卡片内容正确', (WidgetTester tester) async {
     await openMine(tester);
 
@@ -21,6 +43,7 @@ void main() {
     expect(find.text('联系作者'), findsOneWidget);
     expect(find.text('关于软件'), findsOneWidget);
     expect(find.text('检查更新'), findsOneWidget);
+    expect(find.text('隐私政策'), findsOneWidget);
 
     // 已删除的旧卡片
     expect(find.text('亲爱的同学'), findsNothing);

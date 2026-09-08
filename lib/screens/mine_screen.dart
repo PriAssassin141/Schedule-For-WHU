@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'package:class_manager/screens/personalization_screen.dart';
 import 'package:class_manager/state/app_state.dart';
 import 'package:class_manager/theme/palette.dart';
+import 'package:class_manager/utils/greeting.dart';
 import 'package:class_manager/utils/links.dart';
 import 'package:class_manager/widgets/glass.dart';
 
@@ -36,18 +37,37 @@ class MineScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final settings = context.watch<AppState>().settings;
+    final greeting = greetingFor(DateTime.now());
     return SafeArea(
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 10, 16, 110),
         children: [
-          Center(
-            child: Text('我的',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.w800)),
+          // ---- 按时间问候 ----
+          Padding(
+            padding: const EdgeInsets.only(left: 2, top: 6),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  greeting.withName(settings.userName),
+                  style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w800,
+                      height: 1.2),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  '✨ ${greeting.reminder}',
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.7),
+                      fontSize: 12.5),
+                ),
+              ],
+            ),
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 22),
           // ---- 个性化 ----
           _SettingTile(
             icon: Icons.tune_rounded,

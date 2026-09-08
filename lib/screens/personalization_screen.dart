@@ -42,6 +42,12 @@ class PersonalizationScreen extends StatelessWidget {
           ),
           const SizedBox(height: 18),
 
+          // ---- 个人姓名 ----
+          _SectionTitle('个人姓名'),
+          const SizedBox(height: 10),
+          _NameCard(state: state),
+          const SizedBox(height: 18),
+
           // ---- 主题颜色 ----
           _SectionTitle('主题颜色'),
           const SizedBox(height: 10),
@@ -86,6 +92,13 @@ class PersonalizationScreen extends StatelessWidget {
             tintAlphaOverride: 0.12,
             child: Column(
               children: [
+                GlassSwitchRow(
+                  title: '显示网格',
+                  subtitle: '关闭后课表背景的白色网格消失',
+                  value: settings.showGrid,
+                  onChanged: (v) =>
+                      state.updateSettings(settings.copyWith(showGrid: v)),
+                ),
                 GlassSliderRow(
                   title: '背景模糊',
                   value: settings.backgroundBlur,
@@ -93,6 +106,7 @@ class PersonalizationScreen extends StatelessWidget {
                   label: (v) => (v * 100).round().toString(),
                   onChanged: (v) =>
                       state.updateSettings(settings.copyWith(backgroundBlur: v)),
+                  showDivider: true,
                 ),
                 GlassSliderRow(
                   title: '卡片透明',
@@ -276,6 +290,63 @@ class _SectionTitle extends StatelessWidget {
               color: Colors.white.withValues(alpha: 0.8),
               fontSize: 14,
               fontWeight: FontWeight.w800)),
+    );
+  }
+}
+
+/// 个人姓名输入卡片（用于「我的」页问候语）。
+class _NameCard extends StatefulWidget {
+  final AppState state;
+  const _NameCard({required this.state});
+
+  @override
+  State<_NameCard> createState() => _NameCardState();
+}
+
+class _NameCardState extends State<_NameCard> {
+  late final TextEditingController _ctl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctl = TextEditingController(text: widget.state.settings.userName);
+  }
+
+  @override
+  void dispose() {
+    _ctl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = themeColorOf(widget.state.settings);
+    return LiquidGlass(
+      radius: BorderRadius.circular(18),
+      tintAlphaOverride: 0.18,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      child: Row(
+        children: [
+          Icon(Icons.person_outline_rounded, size: 18, color: theme),
+          const SizedBox(width: 12),
+          Expanded(
+            child: TextField(
+              controller: _ctl,
+              style: const TextStyle(color: Colors.white, fontSize: 14.5),
+              cursorColor: Colors.white,
+              decoration: InputDecoration(
+                hintText: '输入名字，用于「我的」页问候语',
+                hintStyle: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
+                border: InputBorder.none,
+                contentPadding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              onChanged: (v) => widget.state
+                  .updateSettings(widget.state.settings.copyWith(userName: v)),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

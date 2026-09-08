@@ -36,6 +36,12 @@ class AppSettings {
   /// 背景图片路径；null 表示使用内置渐变装潢。
   String? wallpaperPath;
 
+  /// 显示课表网格（关闭后课表背景的白色网格消失）。
+  bool showGrid;
+
+  /// 个人姓名（用于「我的」页问候语）。
+  String userName;
+
   AppSettings({
     this.startDate = '2026-09-07',
     this.themeColorIndex = 0,
@@ -49,6 +55,8 @@ class AppSettings {
     this.refraction = 0.0,
     this.dispersion = 0.0,
     this.wallpaperPath,
+    this.showGrid = true,
+    this.userName = '',
   });
 
   Map<String, Object?> toMap() => {
@@ -64,6 +72,8 @@ class AppSettings {
         'refraction': refraction,
         'dispersion': dispersion,
         'wallpaper_path': wallpaperPath,
+        'show_grid': showGrid ? 1 : 0,
+        'user_name': userName,
       };
 
   factory AppSettings.fromMap(Map<String, Object?> m) => AppSettings(
@@ -79,6 +89,8 @@ class AppSettings {
         refraction: (m['refraction'] as num?)?.toDouble() ?? 0.0,
         dispersion: (m['dispersion'] as num?)?.toDouble() ?? 0.0,
         wallpaperPath: m['wallpaper_path'] as String?,
+        showGrid: ((m['show_grid'] as int?) ?? 1) == 1,
+        userName: (m['user_name'] as String?) ?? '',
       );
 
   AppSettings copyWith({
@@ -95,6 +107,8 @@ class AppSettings {
     double? dispersion,
     String? wallpaperPath,
     bool clearWallpaper = false,
+    bool? showGrid,
+    String? userName,
   }) =>
       AppSettings(
         startDate: startDate ?? this.startDate,
@@ -111,5 +125,7 @@ class AppSettings {
         dispersion: dispersion ?? this.dispersion,
         wallpaperPath:
             clearWallpaper ? null : (wallpaperPath ?? this.wallpaperPath),
+        showGrid: showGrid ?? this.showGrid,
+        userName: userName ?? this.userName,
       );
 }

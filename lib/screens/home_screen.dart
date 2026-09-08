@@ -504,17 +504,9 @@ class FullWeekSchedule extends StatelessWidget {
                       ),
                       for (var d = 1; d <= 7; d++)
                         Expanded(
-                          child: Container(
-                            margin: const EdgeInsets.symmetric(horizontal: 1.2, vertical: 1.4),
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.028),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(
-                                color: Colors.white.withValues(alpha: 0.045),
-                                width: 0.5,
-                              ),
-                            ),
-                          ),
+                          child: settings.showGrid
+                              ? const GridCell()
+                              : const SizedBox.shrink(),
                         ),
                     ],
                   ),
@@ -585,57 +577,75 @@ class _MiniCourseCard extends StatelessWidget {
       radius: BorderRadius.circular(10),
       tintColor: color,
       tintAlphaOverride: 1.2,
-      padding: const EdgeInsets.fromLTRB(5, 5, 5, 4),
+      padding: const EdgeInsets.fromLTRB(3.5, 4, 3.5, 3),
       glowColor: color,
       onTap: onTap,
       onLongPress: onLongPress,
-      child: Column(
+      child: Stack(
         children: [
-          // 课程名：整块居中，垂直居中于地点上方区域
-          Expanded(
-            child: Center(
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Flexible(
-                    child: Text(
-                      c.name,
-                      maxLines: 5,
-                      overflow: TextOverflow.ellipsis,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.w800,
-                        height: 1.2,
-                        shadows: [Shadow(color: Colors.black45, blurRadius: 3)],
-                      ),
+          Column(
+            children: [
+              // 课程名：整块居中，垂直居中于地点上方区域
+              Expanded(
+                child: Center(
+                  child: Text(
+                    c.name,
+                    maxLines: 9,
+                    overflow: TextOverflow.ellipsis,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w800,
+                      height: 1.18,
+                      shadows: [Shadow(color: Colors.black45, blurRadius: 3)],
                     ),
                   ),
-                  if (partial)
-                    Padding(
-                      padding: const EdgeInsets.only(left: 1.5, top: 1.5),
-                      child: Icon(Icons.circle,
-                          size: 5, color: Colors.white.withValues(alpha: 0.9)),
-                    ),
-                ],
+                ),
               ),
-            ),
+              if (c.location.isNotEmpty)
+                Text(
+                  c.location,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.92),
+                    fontSize: 8.5,
+                    height: 1.15,
+                  ),
+                ),
+            ],
           ),
-          if (c.location.isNotEmpty)
-            Text(
-              c.location,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.92),
-                fontSize: 8.5,
-                height: 1.15,
-              ),
+          // 非全周课程的标记点：置于右上角，不占用文字宽度
+          if (partial)
+            Positioned(
+              top: 0,
+              right: 0,
+              child: Icon(Icons.circle,
+                  size: 5, color: Colors.white.withValues(alpha: 0.9)),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// 课表格子（白色半透明网格；可在「个性化 → 显示网格」中关闭）。
+class GridCell extends StatelessWidget {
+  const GridCell({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 1.2, vertical: 1.4),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.028),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.045),
+          width: 0.5,
+        ),
       ),
     );
   }

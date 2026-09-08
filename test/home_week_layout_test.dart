@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 
 import 'package:class_manager/main.dart';
 import 'package:class_manager/models/course.dart';
+import 'package:class_manager/screens/home_screen.dart';
 import 'package:class_manager/state/app_state.dart';
 
 /// 主页全周课表：
@@ -61,5 +62,27 @@ void main() {
     final gap = nav.top - last.bottom;
     expect(gap, inInclusiveRange(2, 40),
         reason: '课表底部与导航栏间距应紧凑，实际 $gap');
+  });
+
+  testWidgets('显示网格开关控制课表网格', (WidgetTester tester) async {
+    addTearDown(tester.view.reset);
+
+    final state = AppState.memory();
+    state.browseWeek = 1;
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3.0;
+    await tester.pumpWidget(ClassManagerApp(state: state));
+    await tester.pump();
+
+    // 默认显示网格：13 节 × 7 天
+    expect(find.byType(GridCell), findsNWidgets(13 * 7));
+
+    await state.updateSettings(state.settings.copyWith(showGrid: false));
+    await tester.pump();
+    expect(find.byType(GridCell), findsNothing, reason: '关闭后网格消失');
+
+    await state.updateSettings(state.settings.copyWith(showGrid: true));
+    await tester.pump();
+    expect(find.byType(GridCell), findsNWidgets(13 * 7));
   });
 }
