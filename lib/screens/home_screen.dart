@@ -277,17 +277,20 @@ class _WeekPagerState extends State<_WeekPager>
     final state = context.read<AppState>();
     final target = state.currentWeek;
     if (state.browseWeek == target) return;
+    // 回跳期间用更快的翻页动画
+    _external.duration = const Duration(milliseconds: 140);
     setState(() => _catchingUp = true);
     var guard = 0;
     while (mounted && state.browseWeek != target && guard++ < kMaxWeek + 2) {
       final gap = (target - state.browseWeek).abs();
       final dir = target > state.browseWeek ? 1 : -1;
       state.setBrowseWeek(state.browseWeek + dir);
-      // 间隔越多，单步越快，整体时长可控
-      final stepMs = (900 / gap).clamp(90, 260).round();
+      // 间隔越多，单步越快；整体约 0.2~0.8 秒
+      final stepMs = (360 / gap).clamp(40, 110).round();
       await Future<void>.delayed(Duration(milliseconds: stepMs));
     }
     if (mounted) setState(() => _catchingUp = false);
+    _external.duration = const Duration(milliseconds: 260);
   }
 
   @override
