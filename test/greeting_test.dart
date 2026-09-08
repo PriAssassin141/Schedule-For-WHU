@@ -8,9 +8,9 @@ void main() {
       greetingFor(DateTime(2026, 9, 8, hour, minute));
 
   test('七个时间段划分正确', () {
-    expect(at(23).hello, '深夜好');
-    expect(at(0).hello, '深夜好');
-    expect(at(4, 59).hello, '深夜好');
+    expect(at(23).hello, '夜深了');
+    expect(at(0).hello, '夜深了');
+    expect(at(4, 59).hello, '夜深了');
 
     expect(at(5).hello, '清晨好');
     expect(at(6, 59).hello, '清晨好');
@@ -36,7 +36,7 @@ void main() {
       final g = at(h);
       expect(g.reminder.isNotEmpty, isTrue, reason: '$h 点缺少提醒文案');
     }
-    expect(at(23).reminder, '夜深了，早点休息吧');
+    expect(at(23).reminder, '别熬太晚，早点休息吧');
   });
 
   test('带姓名的问候', () {

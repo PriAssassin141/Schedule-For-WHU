@@ -19,7 +19,7 @@ class Greeting {
 Greeting greetingFor(DateTime now) {
   final h = now.hour;
   if (h >= 23 || h < 5) {
-    return const Greeting('深夜好', '夜深了，早点休息吧');
+    return const Greeting('夜深了', '别熬太晚，早点休息吧');
   }
   if (h < 7) {
     return const Greeting('清晨好', '新的一天开始了，慢慢来也没关系');
