@@ -343,6 +343,15 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
   // 周数多选
   Widget _weekPicker(Color theme) {
     final all = _weeks.length == kMaxWeek;
+    // 单周 / 双周选中判断（22 周时两者数量相同，需按奇偶区分）
+    final oddWeeks = {for (var w = 1; w <= kMaxWeek; w += 2) w};
+    final evenWeeks = {for (var w = 2; w <= kMaxWeek; w += 2) w};
+    final isOdd = _weeks.isNotEmpty &&
+        _weeks.length == oddWeeks.length &&
+        _weeks.every(oddWeeks.contains);
+    final isEven = _weeks.isNotEmpty &&
+        _weeks.length == evenWeeks.length &&
+        _weeks.every(evenWeeks.contains);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -350,9 +359,9 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
           children: [
             _quickChip('全部', all, () => setState(() => _weeks = {...List.generate(kMaxWeek, (i) => i + 1)}), theme),
             const SizedBox(width: 6),
-            _quickChip('单周', _weeks.length == 10, () => setState(() => _weeks = {for (var w = 1; w <= kMaxWeek; w += 2) w}), theme),
+            _quickChip('单周', isOdd, () => setState(() => _weeks = {...oddWeeks}), theme),
             const SizedBox(width: 6),
-            _quickChip('双周', _weeks.length == 10, () => setState(() => _weeks = {for (var w = 2; w <= kMaxWeek; w += 2) w}), theme),
+            _quickChip('双周', isEven, () => setState(() => _weeks = {...evenWeeks}), theme),
             const SizedBox(width: 6),
             _quickChip('1-16周', _weeks.length == 16 && _weeks.contains(1) && _weeks.contains(16), () => setState(() => _weeks = {for (var w = 1; w <= 16; w++) w}), theme),
             const SizedBox(width: 6),

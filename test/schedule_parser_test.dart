@@ -28,6 +28,15 @@ void main() {
       expect(Weeks.contains('2,15', 3), isFalse);
       expect(Weeks.describe(''), '全周');
     });
+
+    test('学期周数上限为 22 周', () {
+      expect(kMaxWeek, 22);
+      expect(Weeks.parse(''), List.generate(22, (i) => i + 1));
+      expect(Weeks.compress([for (var w = 1; w <= 22; w++) w]), '',
+          reason: '1-22 周 = 全周');
+      expect(Weeks.contains('21-22', 22), isTrue);
+      expect(Weeks.canonical('21-30'), '21-22', reason: '超出上限的周次应被裁剪');
+    });
   });
 
   group('开学日期换算', () {

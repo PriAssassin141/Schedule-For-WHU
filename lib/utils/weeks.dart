@@ -71,8 +71,8 @@ class Weeks {
   }
 }
 
-/// 课表默认支持的最大周数（按学期 20 周计）。
-const int kMaxWeek = 20;
+/// 课表默认支持的最大周数（按学期 22 周计）。
+const int kMaxWeek = 22;
 
 /// 'yyyy-MM-dd' → DateTime（本地时区）。
 DateTime parseDate(String s) {
