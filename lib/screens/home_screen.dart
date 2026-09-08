@@ -53,20 +53,10 @@ class HomeScreen extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           // ---- 全周 7 天课表（SafeArea 已预留导航高度，这里只留参考图的紧凑间距）----
-          Expanded(
+          const Expanded(
             child: Padding(
-              padding: const EdgeInsets.only(bottom: 26),
-              child: Stack(
-                children: [
-                  Positioned.fill(child: const _WeekPager()),
-                  // 回到本周悬浮钮（非本周时显示）
-                  if (state.browseWeek != state.currentWeek)
-                    Align(
-                      alignment: const Alignment(0.92, -0.05),
-                      child: _BackToThisWeek(theme: theme),
-                    ),
-                ],
-              ),
+              padding: EdgeInsets.only(bottom: 26),
+              child: _WeekPager(),
             ),
           ),
         ],
@@ -181,13 +171,23 @@ class _WeekPager extends StatefulWidget {
 }
 
 class _WeekPagerState extends State<_WeekPager>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   /// 拖拽进度：>0 向「下一周」翻，<0 向「上一周」翻，范围 -1..1。
   double _progress = 0;
   late final AnimationController _settle;
   double _from = 0;
   double _to = 0;
   bool _commitOnEnd = false;
+
+  /// 外部切换周次（周次选择 / 「回到本周」）时的整页滑动动画。
+  late final AnimationController _external;
+  int _extFrom = 1;
+  int _extTo = 1;
+  int _extDir = 1;
+  int _lastWeek = 0;
+
+  /// 正在逐周回跳（回到本周）时，忽略拖拽打断。
+  bool _catchingUp = false;
 
   @override
   void initState() {
@@ -208,14 +208,30 @@ class _WeekPagerState extends State<_WeekPager>
         if (!mounted) return;
         final state = context.read<AppState>();
         final delta = _progress > 0 ? 1 : -1;
-        state.setBrowseWeek(state.browseWeek + delta);
+        final target = state.browseWeek + delta;
+        _lastWeek = target; // 内部提交，避免重复触发外部动画
+        state.setBrowseWeek(target);
         setState(() => _progress = 0);
+      });
+
+    _external = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 260),
+    )
+      ..addListener(() => setState(() {}))
+      ..addStatusListener((status) {
+        if (status != AnimationStatus.completed) return;
+        setState(() {
+          _extFrom = _extTo;
+          _extDir = 1;
+        });
       });
   }
 
   @override
   void dispose() {
     _settle.dispose();
+    _external.dispose();
     super.dispose();
   }
 
@@ -227,7 +243,13 @@ class _WeekPagerState extends State<_WeekPager>
   }
 
   void _onDragUpdate(DragUpdateDetails d, double height) {
+    if (_catchingUp) return;
     if (_settle.isAnimating) return;
+    // 拖动优先：取消正在播放的外部切换动画
+    if (_external.isAnimating) {
+      _external.stop();
+      _extFrom = _extTo;
+    }
     final week = context.read<AppState>().browseWeek;
     var next = _progress - (d.primaryDelta ?? 0) / (height * 0.75);
     // 首周不能再往上翻、末周不能再往下翻
@@ -237,6 +259,7 @@ class _WeekPagerState extends State<_WeekPager>
   }
 
   void _onDragEnd(DragEndDetails d, double height) {
+    if (_catchingUp) return;
     final week = context.read<AppState>().browseWeek;
     final fling = -(d.primaryVelocity ?? 0) / 900; // 向上拖动 → 正
     final target = _progress + fling;
@@ -249,13 +272,49 @@ class _WeekPagerState extends State<_WeekPager>
     }
   }
 
+  /// 「回到本周」：逐周滑动返回，中间间隔的每一周都会滑过。
+  Future<void> _backToThisWeek() async {
+    final state = context.read<AppState>();
+    final target = state.currentWeek;
+    if (state.browseWeek == target) return;
+    setState(() => _catchingUp = true);
+    var guard = 0;
+    while (mounted && state.browseWeek != target && guard++ < kMaxWeek + 2) {
+      final gap = (target - state.browseWeek).abs();
+      final dir = target > state.browseWeek ? 1 : -1;
+      state.setBrowseWeek(state.browseWeek + dir);
+      // 间隔越多，单步越快，整体时长可控
+      final stepMs = (900 / gap).clamp(90, 260).round();
+      await Future<void>.delayed(Duration(milliseconds: stepMs));
+    }
+    if (mounted) setState(() => _catchingUp = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final week = state.browseWeek;
+    final theme = themeColorOf(state.settings);
+
+    // 外部切换（周次选择器 / 逐周回跳）：检测到周次变化就播放一次整页滑动
+    if (_lastWeek == 0) _lastWeek = week;
+    if (week != _lastWeek) {
+      final from = _lastWeek;
+      _lastWeek = week;
+      _extFrom = from;
+      _extTo = week;
+      _extDir = week > from ? 1 : -1;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        _external.forward(from: 0);
+      });
+    }
+
     final dir = _progress >= 0 ? 1 : -1;
     final neighbor = (week + dir).clamp(1, kMaxWeek);
     final p = _progress.abs();
+    final extT = _external.value;
+    final extActive = _extFrom != _extTo;
 
     return LayoutBuilder(builder: (context, cons) {
       final h = cons.maxHeight;
@@ -263,23 +322,46 @@ class _WeekPagerState extends State<_WeekPager>
         behavior: HitTestBehavior.opaque,
         onVerticalDragUpdate: (d) => _onDragUpdate(d, h),
         onVerticalDragEnd: (d) => _onDragEnd(d, h),
-        child: ClipRect(
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // 当前页：整页滑出视口（无淡出，纯丝滑滑动）
-              FractionalTranslation(
-                translation: Offset(0, -dir * p),
-                child: FullWeekSchedule(week: week),
-              ),
-              // 相邻页：从另一侧整页滑入
-              if (p > 0.0001)
-                FractionalTranslation(
-                  translation: Offset(0, dir * (1 - p)),
-                  child: FullWeekSchedule(week: neighbor),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: ClipRect(
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: extActive
+                      // 外部切换：旧页滑出、新页滑入（同一套丝滑滑动）
+                      ? [
+                          FractionalTranslation(
+                            translation: Offset(0, -_extDir * extT),
+                            child: FullWeekSchedule(week: _extFrom),
+                          ),
+                          FractionalTranslation(
+                            translation: Offset(0, _extDir * (1 - extT)),
+                            child: FullWeekSchedule(week: _extTo),
+                          ),
+                        ]
+                      // 拖动 / 静止
+                      : [
+                          FractionalTranslation(
+                            translation: Offset(0, -dir * p),
+                            child: FullWeekSchedule(week: week),
+                          ),
+                          if (p > 0.0001)
+                            FractionalTranslation(
+                              translation: Offset(0, dir * (1 - p)),
+                              child: FullWeekSchedule(week: neighbor),
+                            ),
+                        ],
                 ),
-            ],
-          ),
+              ),
+            ),
+            // 回到本周悬浮钮（非本周时显示，点击后逐周滑动返回）
+            if (week != state.currentWeek)
+              Align(
+                alignment: const Alignment(0.92, -0.05),
+                child: _BackToThisWeek(theme: theme, onTap: _backToThisWeek),
+              ),
+          ],
         ),
       );
     });
@@ -612,20 +694,20 @@ class _DayHeader extends StatelessWidget {
   }
 }
 
-/// 回到本周悬浮按钮。
+/// 回到本周悬浮按钮（点击后逐周滑动返回）。
 class _BackToThisWeek extends StatelessWidget {
   final Color theme;
-  const _BackToThisWeek({required this.theme});
+  final VoidCallback onTap;
+  const _BackToThisWeek({required this.theme, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
-    final state = context.read<AppState>();
     return LiquidGlass(
       radius: BorderRadius.circular(22),
       tintColor: theme,
       tintAlphaOverride: 0.45,
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      onTap: () => state.setBrowseWeek(state.currentWeek),
+      onTap: onTap,
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [

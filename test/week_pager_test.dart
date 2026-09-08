@@ -49,4 +49,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(state.browseWeek, 1, reason: '第 1 周向下拖动应保持不动');
   });
+
+  testWidgets('回到本周：逐周滑动返回', (WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1170, 2532);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
+    final state = AppState.memory();
+    state.browseWeek = 6; // 当前周为第 1 周（默认开学日期）
+
+    await tester.pumpWidget(ClassManagerApp(state: state));
+    await tester.pump();
+
+    expect(find.text('回到本周'), findsOneWidget);
+
+    await tester.tap(find.text('回到本周'));
+    await tester.pump(); // 启动逐周回跳
+
+    // 中途应处于两页滑动状态（说明是连续滑动而非瞬间跳转）
+    await tester.pump(const Duration(milliseconds: 120));
+    expect(state.browseWeek, lessThan(6), reason: '应逐周回跳');
+
+    await tester.pumpAndSettle();
+    expect(state.browseWeek, state.currentWeek, reason: '最终回到本周');
+    expect(find.text('回到本周'), findsNothing, reason: '已在本周，按钮隐藏');
+  });
 }

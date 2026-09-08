@@ -27,6 +27,14 @@ void main() {
     expect(find.text('关于'), findsNothing);
     expect(find.text('开学日期'), findsNothing);
     expect(find.text('导入课表'), findsNothing);
+
+    // 卡片顺序：个性化设置 → 获取源码 → 联系作者/关于软件/检查更新
+    final personalization = tester.getTopLeft(find.text('个性化设置')).dy;
+    final source = tester.getTopLeft(find.text('获取源码')).dy;
+    final contact = tester.getTopLeft(find.text('联系作者')).dy;
+    expect(source, greaterThan(personalization),
+        reason: '获取源码应在个性化设置下方');
+    expect(source, lessThan(contact), reason: '获取源码应在联系作者上方（第二行）');
   });
 
   testWidgets('联系作者：QQ 与邮箱可复制', (WidgetTester tester) async {

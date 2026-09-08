@@ -49,6 +49,14 @@ class MineScreen extends StatelessWidget {
                 MaterialPageRoute(builder: (_) => const PersonalizationScreen())),
           ),
           const SizedBox(height: 12),
+          // ---- 获取源码 ----
+          _SettingTile(
+            icon: Icons.code_rounded,
+            title: '获取源码',
+            subtitle: 'GitHub · PriAssassin141/Schedule-For-WHU',
+            onTap: () => _showSource(context),
+          ),
+          const SizedBox(height: 12),
           // ---- 联系作者 / 关于软件 / 检查更新（同一张大卡片，细线分隔）----
           LiquidGlass(
             radius: BorderRadius.circular(18),
@@ -75,14 +83,6 @@ class MineScreen extends StatelessWidget {
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 12),
-          // ---- 获取源码 ----
-          _SettingTile(
-            icon: Icons.code_rounded,
-            title: '获取源码',
-            subtitle: 'GitHub · PriAssassin141/Schedule-For-WHU',
-            onTap: () => _showSource(context),
           ),
         ],
       ),
