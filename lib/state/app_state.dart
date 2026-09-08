@@ -133,13 +133,44 @@ class AppState extends ChangeNotifier {
   }
 
   /// 批量导入（[replace] 为 true 时先清空）。
-  Future<void> importCourses(List<ParsedCourse> parsed, {bool replace = false}) async {
+  ///
+  /// 自动为不同课程分配不同颜色：**同名课程复用同一颜色**，
+  /// 新课程取当前使用次数最少的颜色（逐条累加统计，避免整批同色）。
+  Future<void> importCourses(List<ParsedCourse> parsed,
+      {bool replace = false}) async {
     if (replace && db != null) {
       await db!.clearCourses();
       courses.clear();
     }
-    final list = parsed.map((pc) {
-      return Course(
+
+    // 现有课程的用色统计 + 课程名 → 颜色
+    final used = <int, int>{};
+    final nameColor = <String, int>{};
+    for (final c in courses) {
+      used[c.colorValue] = (used[c.colorValue] ?? 0) + 1;
+      nameColor.putIfAbsent(c.name.trim(), () => c.colorValue);
+    }
+
+    int colorFor(String name) {
+      final key = name.trim();
+      final existing = nameColor[key];
+      if (existing != null) return existing;
+      var best = kCourseColors.first;
+      var bestCount = 1 << 30;
+      for (final color in kCourseColors) {
+        final count = used[color] ?? 0;
+        if (count < bestCount) {
+          bestCount = count;
+          best = color;
+        }
+      }
+      used[best] = (used[best] ?? 0) + 1;
+      nameColor[key] = best;
+      return best;
+    }
+
+    for (final pc in parsed) {
+      await addCourse(Course(
         name: pc.name,
         teacher: pc.teacher,
         location: pc.location,
@@ -148,11 +179,8 @@ class AppState extends ChangeNotifier {
         startPeriod: pc.startPeriod,
         endPeriod: pc.endPeriod,
         weeks: pc.weeks,
-        colorValue: pickCourseColor(),
-      );
-    }).toList();
-    for (final c in list) {
-      await addCourse(c);
+        colorValue: colorFor(pc.name),
+      ));
     }
     notifyListeners();
   }
