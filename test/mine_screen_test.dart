@@ -85,4 +85,17 @@ void main() {
     expect(find.text('打开链接'), findsOneWidget);
     expect(find.text('复制链接'), findsOneWidget);
   });
+
+  testWidgets('隐私政策：悬浮窗展示纯本地说明', (WidgetTester tester) async {
+    await openMine(tester);
+
+    expect(find.text('隐私政策'), findsOneWidget);
+    await tester.tap(find.text('隐私政策'));
+    await tester.pumpAndSettle();
+
+    expect(find.textContaining('纯本地软件'), findsOneWidget);
+    expect(find.textContaining('不会被以任何形式收集或上传'), findsOneWidget);
+    expect(find.textContaining('2026 年 9 月 8 日'), findsOneWidget);
+    expect(find.textContaining('闫梓萱'), findsOneWidget);
+  });
 }

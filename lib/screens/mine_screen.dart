@@ -25,6 +25,14 @@ class MineScreen extends StatelessWidget {
       '本软件在设计时借鉴了我本科期间使用的课表软件“矿小助”。“矿小助”是由中国矿业大学翔工作室'
       '开发的一款十分优秀的课表软件，集成了校园网自动登录、成绩查询、班车时间、电费查询等生活常用功能，'
       '我不敢与之相提并论，只敢拾人牙慧，拙劣地模仿一下，希望大家喜欢！';
+  static const String _privacyText =
+      '希望您仔细阅读此《表里珞珈隐私政策》（以下简称“本政策”），详细了解本 APP 对隐私信息的使用策略，'
+      '以帮助您更好地了解本 APP，并决定您的使用方式。\n\n'
+      '本 APP 为纯本地软件，不对外提供任何形式的网络服务。用户的所有数据不会被以任何形式收集或上传，'
+      '只会被保存在手机本地。本 APP 亦没有注册功能，所有数据均由用户自行输入软件，'
+      '且仅仅保存在本地而不会被上传。\n\n'
+      '最后更新于 2026 年 9 月 8 日\n'
+      '闫梓萱';
 
   @override
   Widget build(BuildContext context) {
@@ -80,6 +88,12 @@ class MineScreen extends StatelessWidget {
                   title: '检查更新',
                   showDivider: true,
                   onTap: () => _checkUpdate(context),
+                ),
+                _MenuRow(
+                  icon: Icons.privacy_tip_outlined,
+                  title: '隐私政策',
+                  showDivider: true,
+                  onTap: () => _showPrivacy(context),
                 ),
               ],
             ),
@@ -286,6 +300,56 @@ class MineScreen extends StatelessWidget {
   // ---------- 检查更新（跳转夸克网盘下载最新版）----------
   void _checkUpdate(BuildContext context) {
     openExternalLink(context, _updateUrl);
+  }
+
+  // ---------- 隐私政策 ----------
+  void _showPrivacy(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => LiquidGlass(
+        radius: BorderRadius.circular(24),
+        margin: const EdgeInsets.fromLTRB(10, 0, 10, 16),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+        tintAlphaOverride: 0.34,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(
+              maxHeight: MediaQuery.of(sheetCtx).size.height * 0.62),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(Icons.privacy_tip_outlined,
+                      size: 18,
+                      color: themeColorOf(context.read<AppState>().settings)),
+                  const SizedBox(width: 8),
+                  const Text('隐私政策',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800)),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Text(
+                    _privacyText,
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.88),
+                        fontSize: 13,
+                        height: 1.8),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
