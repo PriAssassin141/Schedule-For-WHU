@@ -7,6 +7,7 @@ import 'package:class_manager/state/app_state.dart';
 import 'package:class_manager/theme/palette.dart';
 import 'package:class_manager/utils/greeting.dart';
 import 'package:class_manager/utils/links.dart';
+import 'package:class_manager/widgets/campus_login_card.dart';
 import 'package:class_manager/widgets/glass.dart';
 
 /// 我的页：个性化入口 + 「联系作者 / 关于软件 / 检查更新」分组卡片。
@@ -68,6 +69,9 @@ class MineScreen extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 22),
+          // ---- 校园网自动登录 ----
+          const CampusLoginCard(),
+          const SizedBox(height: 12),
           // ---- 个性化 ----
           _SettingTile(
             icon: Icons.tune_rounded,

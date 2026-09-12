@@ -42,6 +42,21 @@ class AppSettings {
   /// 个人姓名（用于「我的」页问候语）。
   String userName;
 
+  /// 校园网账号（统一身份认证学号）。
+  String campusUser;
+
+  /// 校园网密码（仅保存在本机数据库）。
+  String campusPassword;
+
+  /// 校园网运营商 service 取值（Internet / dianxin / liantong / yidong）。
+  String campusService;
+
+  /// 连接校园 WiFi 时自动登录。
+  bool campusAutoLogin;
+
+  /// 历史账号列表（JSON 数组，用于账号下拉）。
+  String campusUserHistory;
+
   AppSettings({
     this.startDate = '2026-09-07',
     this.themeColorIndex = 0,
@@ -57,6 +72,11 @@ class AppSettings {
     this.wallpaperPath,
     this.showGrid = true,
     this.userName = '',
+    this.campusUser = '',
+    this.campusPassword = '',
+    this.campusService = 'Internet',
+    this.campusAutoLogin = true,
+    this.campusUserHistory = '[]',
   });
 
   Map<String, Object?> toMap() => {
@@ -74,6 +94,11 @@ class AppSettings {
         'wallpaper_path': wallpaperPath,
         'show_grid': showGrid ? 1 : 0,
         'user_name': userName,
+        'campus_user': campusUser,
+        'campus_password': campusPassword,
+        'campus_service': campusService,
+        'campus_auto_login': campusAutoLogin ? 1 : 0,
+        'campus_user_history': campusUserHistory,
       };
 
   factory AppSettings.fromMap(Map<String, Object?> m) => AppSettings(
@@ -91,6 +116,11 @@ class AppSettings {
         wallpaperPath: m['wallpaper_path'] as String?,
         showGrid: ((m['show_grid'] as int?) ?? 1) == 1,
         userName: (m['user_name'] as String?) ?? '',
+        campusUser: (m['campus_user'] as String?) ?? '',
+        campusPassword: (m['campus_password'] as String?) ?? '',
+        campusService: (m['campus_service'] as String?) ?? 'Internet',
+        campusAutoLogin: ((m['campus_auto_login'] as int?) ?? 1) == 1,
+        campusUserHistory: (m['campus_user_history'] as String?) ?? '[]',
       );
 
   AppSettings copyWith({
@@ -109,6 +139,11 @@ class AppSettings {
     bool clearWallpaper = false,
     bool? showGrid,
     String? userName,
+    String? campusUser,
+    String? campusPassword,
+    String? campusService,
+    bool? campusAutoLogin,
+    String? campusUserHistory,
   }) =>
       AppSettings(
         startDate: startDate ?? this.startDate,
@@ -127,5 +162,10 @@ class AppSettings {
             clearWallpaper ? null : (wallpaperPath ?? this.wallpaperPath),
         showGrid: showGrid ?? this.showGrid,
         userName: userName ?? this.userName,
+        campusUser: campusUser ?? this.campusUser,
+        campusPassword: campusPassword ?? this.campusPassword,
+        campusService: campusService ?? this.campusService,
+        campusAutoLogin: campusAutoLogin ?? this.campusAutoLogin,
+        campusUserHistory: campusUserHistory ?? this.campusUserHistory,
       );
 }

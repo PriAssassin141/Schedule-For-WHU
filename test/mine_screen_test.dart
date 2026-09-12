@@ -1,12 +1,19 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'package:class_manager/main.dart';
 import 'package:class_manager/state/app_state.dart';
 import 'package:class_manager/utils/greeting.dart';
 
-/// “我的”页：问候语 + 个性化入口 + 「获取源码 / 联系作者 / 关于软件 / 检查更新 / 隐私政策」。
+/// “我的”页：问候语 + 校园网登录 + 个性化入口 +
+/// 「获取源码 / 联系作者 / 关于软件 / 检查更新 / 隐私政策」。
 void main() {
+  /// 页面较长（含校园网卡片），用高视口保证全部内容被构建。
   Future<void> openMine(WidgetTester tester) async {
+    tester.view.physicalSize = const Size(1170, 4200);
+    tester.view.devicePixelRatio = 3.0;
+    addTearDown(tester.view.reset);
+
     final state = AppState.memory();
     state.browseWeek = 1;
     await tester.pumpWidget(ClassManagerApp(state: state));

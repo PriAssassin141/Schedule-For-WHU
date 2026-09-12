@@ -48,3 +48,6 @@ app.*.map.json
 android/build/
 android/.gradle/
 
+
+# 参考项目源码（矿小助，仅本地研究用，不随本仓库发布）
+/参考/
