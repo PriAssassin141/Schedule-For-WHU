@@ -112,23 +112,7 @@ class AppDatabase {
   Future<AppSettings> loadSettings() async {
     final db = await database;
     final rows = await db.query('settings');
-    final map = <String, String?>{
-      for (final r in rows) r['key'] as String: r['value']?.toString(),
-    };
-    return AppSettings.fromMap({
-      'start_date': map['start_date'],
-      'theme_color_index': int.tryParse(map['theme_color_index'] ?? ''),
-      'immersive_background': int.tryParse(map['immersive_background'] ?? ''),
-      'background_blur': double.tryParse(map['background_blur'] ?? ''),
-      'card_transparency': double.tryParse(map['card_transparency'] ?? ''),
-      'card_blur': double.tryParse(map['card_blur'] ?? ''),
-      'liquid_glass': int.tryParse(map['liquid_glass'] ?? ''),
-      'jelly_effect': int.tryParse(map['jelly_effect'] ?? ''),
-      'saturation': double.tryParse(map['saturation'] ?? ''),
-      'refraction': double.tryParse(map['refraction'] ?? ''),
-      'dispersion': double.tryParse(map['dispersion'] ?? ''),
-      'wallpaper_path': map['wallpaper_path'],
-    });
+    return settingsFromRows(rows);
   }
 
   Future<void> saveSettings(AppSettings s) async {
@@ -137,7 +121,7 @@ class AppDatabase {
     s.toMap().forEach((k, v) {
       batch.insert(
         'settings',
-        {'key': k, 'value': v.toString()},
+        {'key': k, 'value': v?.toString() ?? ''},
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
     });
@@ -153,8 +137,36 @@ class AppDatabase {
         0;
     if (settingCount == 0) {
       AppSettings().toMap().forEach((k, v) {
-        db.insert('settings', {'key': k, 'value': v.toString()});
+        db.insert('settings', {'key': k, 'value': v?.toString() ?? ''});
       });
     }
   }
+}
+
+/// 把 `settings` 表的行还原为 [AppSettings]。
+///
+/// 以「默认设置」为模板按字段类型自动解析，**新增设置项无需再手写解析代码**
+/// （此前手写的 key 列表曾导致 show_grid / user_name 重启后失效）。
+AppSettings settingsFromRows(List<Map<String, Object?>> rows) {
+  final stored = <String, String>{
+    for (final r in rows)
+      if (r['key'] != null) r['key'] as String: (r['value'] ?? '').toString(),
+  };
+
+  final map = <String, Object?>{};
+  AppSettings().toMap().forEach((key, def) {
+    final raw = stored[key];
+    if (raw == null || raw.isEmpty || raw == 'null') {
+      map[key] = def; // 未存过 / 已清空 → 用默认值
+      return;
+    }
+    if (def is int) {
+      map[key] = int.tryParse(raw) ?? def;
+    } else if (def is double) {
+      map[key] = double.tryParse(raw) ?? def;
+    } else {
+      map[key] = raw; // 字符串（如 wallpaper_path 等可空字段）
+    }
+  });
+  return AppSettings.fromMap(map);
 }
