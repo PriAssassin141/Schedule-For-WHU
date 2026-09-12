@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "com.classmanager.class_manager"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler_android 要求 compileSdk 37
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
