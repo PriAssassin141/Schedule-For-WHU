@@ -13,6 +13,7 @@ import 'package:class_manager/widgets/glass.dart';
 /// 校园网自动登录卡片（对应「我的」页）。
 ///
 /// 逻辑：连接 WHU-STUDENT-WiFi 后自动用保存的账号登录校园网（锐捷 ePortal）。
+/// 关闭「自动登录」开关后，卡片折叠为仅剩标题一行。
 class CampusLoginCard extends StatefulWidget {
   const CampusLoginCard({super.key});
 
@@ -69,7 +70,10 @@ class _CampusLoginCardState extends State<CampusLoginCard> {
   Future<bool> _ensureWifiPermission() async {
     if (!Platform.isAndroid) return true;
     try {
-      for (final p in [Permission.locationWhenInUse, Permission.nearbyWifiDevices]) {
+      for (final p in [
+        Permission.locationWhenInUse,
+        Permission.nearbyWifiDevices
+      ]) {
         var status = await p.status;
         if (status.isGranted) return true;
         status = await p.request();
@@ -81,6 +85,22 @@ class _CampusLoginCardState extends State<CampusLoginCard> {
     }
   }
 
+  Future<void> _toggleAutoLogin(bool v) async {
+    final state = context.read<AppState>();
+    await state.saveCampusAccount(autoLogin: v);
+    if (!v) return;
+    // 自动登录依赖 WiFi 名称判断，先申请权限
+    final ok = await _ensureWifiPermission();
+    if (!ok) {
+      if (mounted) {
+        _toast('未授予定位/附近设备权限，无法读取 WiFi 名称，自动登录将不可用');
+      }
+      return;
+    }
+    final msg = await state.tryCampusAutoLogin();
+    if (msg != null && mounted) _toast(msg);
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
@@ -88,26 +108,32 @@ class _CampusLoginCardState extends State<CampusLoginCard> {
     final theme = themeColorOf(settings);
     final service = CampusService.fromCode(settings.campusService);
     final history = state.campusUserHistory;
+    final expanded = settings.campusAutoLogin;
 
     return LiquidGlass(
       radius: BorderRadius.circular(18),
       tintAlphaOverride: 0.16,
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 14),
+      padding: EdgeInsets.fromLTRB(16, 12, 16, expanded ? 14 : 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ---- 标题 + 自动登录开关 ----
+          // ---- 标题 + 说明 + 自动登录开关 ----
           Row(
             children: [
               Icon(Icons.wifi_rounded, size: 18, color: theme),
               const SizedBox(width: 10),
-              const Expanded(
-                child: Text('校园网自动登录',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w700)),
+              const Text('校园网自动登录',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700)),
+              const SizedBox(width: 6),
+              GestureDetector(
+                onTap: () => _showHelp(context),
+                child: Icon(Icons.help_outline_rounded,
+                    size: 16, color: Colors.white.withValues(alpha: 0.6)),
               ),
+              const Spacer(),
               SwitchTheme(
                 data: SwitchThemeData(
                   thumbColor:
@@ -120,183 +146,182 @@ class _CampusLoginCardState extends State<CampusLoginCard> {
                       const WidgetStatePropertyAll(Colors.transparent),
                 ),
                 child: Switch(
-                  value: settings.campusAutoLogin,
-                  onChanged: (v) async {
-                    await state.saveCampusAccount(autoLogin: v);
-                    if (!v) return;
-                    // 自动登录依赖 WiFi 名称判断，先申请权限
-                    final ok = await _ensureWifiPermission();
-                    if (!ok) {
-                      if (mounted) {
-                        _toast('未授予定位/附近设备权限，无法读取 WiFi 名称，自动登录将不可用');
-                      }
-                      return;
-                    }
-                    final msg = await state.tryCampusAutoLogin();
-                    if (msg != null && mounted) _toast(msg);
-                  },
+                  value: expanded,
+                  onChanged: _toggleAutoLogin,
                 ),
               ),
             ],
           ),
-          // ---- 自助服务系统 + 帮助 ----
-          Row(
-            children: [
-              GestureDetector(
-                onTap: () => openExternalLink(context, CampusNet.selfServiceUrl),
-                child: Text('用户自助服务系统（下线终端 / 查看用量）',
-                    style: TextStyle(
-                        color: theme,
-                        fontSize: 11.5,
-                        decoration: TextDecoration.underline,
-                        decorationColor: theme)),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: () => _showHelp(context),
-                child: Icon(Icons.help_outline_rounded,
-                    size: 17, color: Colors.white.withValues(alpha: 0.6)),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          // ---- 账号 ----
-          Row(
-            children: [
-              Expanded(
-                child: _field(
-                  controller: _userCtl,
-                  hint: '学号（13 位）',
-                  icon: Icons.person_outline_rounded,
-                  theme: theme,
-                ),
-              ),
-              if (history.isNotEmpty) ...[
-                const SizedBox(width: 6),
-                PopupMenuButton<String>(
-                  tooltip: '历史账号',
-                  color: const Color(0xFF14302E),
-                  onSelected: (u) {
-                    setState(() => _userCtl.text = u);
-                  },
-                  itemBuilder: (_) => [
-                    for (final u in history)
-                      PopupMenuItem(
-                        value: u,
-                        child: Text(u,
-                            style: const TextStyle(
-                                color: Colors.white, fontSize: 13)),
-                      ),
-                  ],
-                  child: Icon(Icons.arrow_drop_down_rounded,
-                      color: Colors.white.withValues(alpha: 0.7)),
-                ),
-              ],
-            ],
-          ),
-          const SizedBox(height: 8),
-          // ---- 密码 ----
-          _field(
-            controller: _pwdCtl,
-            hint: '校园网密码',
-            icon: Icons.lock_outline_rounded,
-            theme: theme,
-            obscure: _obscure,
-            trailing: GestureDetector(
-              onTap: () => setState(() => _obscure = !_obscure),
-              child: Icon(
-                  _obscure
-                      ? Icons.visibility_off_outlined
-                      : Icons.visibility_outlined,
-                  size: 16,
-                  color: Colors.white.withValues(alpha: 0.55)),
-            ),
-          ),
-          const SizedBox(height: 12),
-          // ---- 运营商 + 登录 / 注销 ----
-          Row(
-            children: [
-              PopupMenuButton<CampusService>(
-                tooltip: '选择运营商',
-                color: const Color(0xFF14302E),
-                onSelected: (s) => state.saveCampusAccount(service: s),
-                itemBuilder: (_) => [
-                  for (final s in CampusService.values)
-                    PopupMenuItem(
-                      value: s,
-                      child: Text(s.label,
-                          style: const TextStyle(
-                              color: Colors.white, fontSize: 13)),
-                    ),
-                ],
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.10),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(service.label,
-                          style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600)),
-                      Icon(Icons.arrow_drop_down_rounded,
-                          size: 18, color: Colors.white.withValues(alpha: 0.7)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _button(
-                  label: state.campusBusy ? '请稍候…' : '登录',
-                  color: theme,
-                  alpha: 0.75,
-                  onTap: state.campusBusy ? null : _login,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: _button(
-                  label: '注销',
-                  color: Colors.white,
-                  alpha: 0.14,
-                  onTap: state.campusBusy ? null : _logout,
-                ),
-              ),
-            ],
-          ),
-          // ---- 状态 ----
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Icon(
-                  state.campusBusy
-                      ? Icons.sync_rounded
-                      : Icons.info_outline_rounded,
-                  size: 13,
-                  color: Colors.white.withValues(alpha: 0.55)),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  state.campusStatus.isEmpty
-                      ? '连接 WHU-STUDENT-WiFi 后自动登录；密码仅保存在本机'
-                      : state.campusStatus,
-                  style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
-                      fontSize: 11,
-                      height: 1.35),
-                ),
-              ),
-            ],
+          // ---- 关闭自动登录后折叠为一行 ----
+          AnimatedSize(
+            duration: const Duration(milliseconds: 280),
+            curve: Curves.easeOutCubic,
+            alignment: Alignment.topCenter,
+            child: expanded
+                ? Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: _body(context, state, service, history, theme),
+                  )
+                : const SizedBox(width: double.infinity),
           ),
         ],
       ),
     );
+  }
+
+  /// 卡片展开时的内容（自助服务系统 / 账号 / 密码 / 登录注销 / 状态）。
+  List<Widget> _body(
+    BuildContext context,
+    AppState state,
+    CampusService service,
+    List<String> history,
+    Color theme,
+  ) {
+    return [
+      const SizedBox(height: 8),
+      // 用户自助服务系统
+      GestureDetector(
+        onTap: () => openExternalLink(context, CampusNet.selfServiceUrl),
+        child: Text('用户自助服务系统（下线终端 / 查看用量）',
+            style: TextStyle(
+                color: theme,
+                fontSize: 11.5,
+                decoration: TextDecoration.underline,
+                decorationColor: theme)),
+      ),
+      const SizedBox(height: 12),
+      // ---- 账号 ----
+      Row(
+        children: [
+          Expanded(
+            child: _field(
+              controller: _userCtl,
+              hint: '学号（13 位）',
+              icon: Icons.person_outline_rounded,
+              theme: theme,
+            ),
+          ),
+          if (history.isNotEmpty) ...[
+            const SizedBox(width: 6),
+            PopupMenuButton<String>(
+              tooltip: '历史账号',
+              color: const Color(0xFF14302E),
+              onSelected: (u) => setState(() => _userCtl.text = u),
+              itemBuilder: (_) => [
+                for (final u in history)
+                  PopupMenuItem(
+                    value: u,
+                    child: Text(u,
+                        style: const TextStyle(
+                            color: Colors.white, fontSize: 13)),
+                  ),
+              ],
+              child: Icon(Icons.arrow_drop_down_rounded,
+                  color: Colors.white.withValues(alpha: 0.7)),
+            ),
+          ],
+        ],
+      ),
+      const SizedBox(height: 8),
+      // ---- 密码 ----
+      _field(
+        controller: _pwdCtl,
+        hint: '校园网密码',
+        icon: Icons.lock_outline_rounded,
+        theme: theme,
+        obscure: _obscure,
+        trailing: GestureDetector(
+          onTap: () => setState(() => _obscure = !_obscure),
+          child: Icon(
+              _obscure
+                  ? Icons.visibility_off_outlined
+                  : Icons.visibility_outlined,
+              size: 16,
+              color: Colors.white.withValues(alpha: 0.55)),
+        ),
+      ),
+      const SizedBox(height: 12),
+      // ---- 运营商 + 登录 / 注销 ----
+      Row(
+        children: [
+          PopupMenuButton<CampusService>(
+            tooltip: '选择运营商',
+            color: const Color(0xFF14302E),
+            onSelected: (s) => state.saveCampusAccount(service: s),
+            itemBuilder: (_) => [
+              for (final s in CampusService.values)
+                PopupMenuItem(
+                  value: s,
+                  child: Text(s.label,
+                      style:
+                          const TextStyle(color: Colors.white, fontSize: 13)),
+                ),
+            ],
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(service.label,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12.5,
+                          fontWeight: FontWeight.w600)),
+                  Icon(Icons.arrow_drop_down_rounded,
+                      size: 18, color: Colors.white.withValues(alpha: 0.7)),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: _button(
+              label: state.campusBusy ? '请稍候…' : '登录',
+              color: theme,
+              alpha: 0.75,
+              onTap: state.campusBusy ? null : _login,
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _button(
+              label: '注销',
+              color: Colors.white,
+              alpha: 0.14,
+              onTap: state.campusBusy ? null : _logout,
+            ),
+          ),
+        ],
+      ),
+      // ---- 状态 ----
+      const SizedBox(height: 10),
+      Row(
+        children: [
+          Icon(
+              state.campusBusy
+                  ? Icons.sync_rounded
+                  : Icons.info_outline_rounded,
+              size: 13,
+              color: Colors.white.withValues(alpha: 0.55)),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              state.campusStatus.isEmpty
+                  ? '连接 WHU-STUDENT-WiFi 后自动登录；密码仅保存在本机'
+                  : state.campusStatus,
+              style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.6),
+                  fontSize: 11,
+                  height: 1.35),
+            ),
+          ),
+        ],
+      ),
+    ];
   }
 
   Widget _field({
@@ -393,7 +418,7 @@ class _CampusLoginCardState extends State<CampusLoginCard> {
                     '1. 先在手机「设置 → WLAN」里连接校园无线网 WHU-STUDENT-WiFi；\n\n'
                     '2. 在本卡片填写学号与校园网密码，选择运营商（一般为「校园网」），点击「登录」；\n\n'
                     '3. 打开上方「自动登录」开关后，之后只要连上 WHU-STUDENT-WiFi，'
-                    '打开或回到本应用就会自动完成认证；\n\n'
+                    '打开或回到本应用就会自动完成认证；关闭开关则卡片折叠为一行；\n\n'
                     '4. 上网设备数超限时，可点「用户自助服务系统」下线其他终端；\n\n'
                     '5. 密码只保存在本机数据库，不会上传到任何服务器；'
                     '校园网本身不支持时（例如只有流量），自动登录会自动跳过。',
