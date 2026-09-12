@@ -19,6 +19,9 @@ class MineScreen extends StatelessWidget {
   static const String _wechat = 'Assassin141_CUMT';
   static const String _email = '1224850644@qq.com';
   static const String _updateUrl = 'https://pan.quark.cn/s/b2adc2472b96';
+
+  /// 当前软件版本号
+  static const String _version = '1.1.0';
   static const String _repoUrl =
       'https://github.com/PriAssassin141/Schedule-For-WHU';
   static const String _aboutText =
@@ -331,9 +334,111 @@ class MineScreen extends StatelessWidget {
     );
   }
 
-  // ---------- 检查更新（跳转夸克网盘下载最新版）----------
+  // ---------- 检查更新（先展示当前版本，再由用户决定是否前往下载）----------
   void _checkUpdate(BuildContext context) {
-    openExternalLink(context, _updateUrl);
+    final theme = themeColorOf(context.read<AppState>().settings);
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => LiquidGlass(
+        radius: BorderRadius.circular(24),
+        margin: const EdgeInsets.fromLTRB(10, 0, 10, 16),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+        tintAlphaOverride: 0.34,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.system_update_alt_rounded, size: 18, color: theme),
+                const SizedBox(width: 8),
+                const Text('检查更新',
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800)),
+              ],
+            ),
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(
+                children: [
+                  Text('当前版本',
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.65),
+                          fontSize: 12.5)),
+                  const Spacer(),
+                  Text('v$_version',
+                      style: TextStyle(
+                          color: theme,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w800)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text('如需获取最新版本安装包，请点击下方按钮前往下载链接。',
+                style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 11.5,
+                    height: 1.5)),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: LiquidGlass(
+                      radius: BorderRadius.circular(14),
+                      padding: EdgeInsets.zero,
+                      tintColor: theme,
+                      tintAlphaOverride: 0.75,
+                      onTap: () {
+                        Navigator.of(sheetCtx).pop();
+                        openExternalLink(context, _updateUrl);
+                      },
+                      child: const Center(
+                        child: Text('跳转到下载链接',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800)),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: SizedBox(
+                    height: 44,
+                    child: LiquidGlass(
+                      radius: BorderRadius.circular(14),
+                      padding: EdgeInsets.zero,
+                      tintAlphaOverride: 0.16,
+                      onTap: () => Navigator.of(sheetCtx).pop(),
+                      child: const Center(
+                        child: Text('取消',
+                            style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   // ---------- 隐私政策 ----------

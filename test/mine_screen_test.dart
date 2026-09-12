@@ -88,17 +88,24 @@ void main() {
     expect(find.textContaining('矿小助'), findsOneWidget);
   });
 
-  testWidgets('检查更新：跳转夸克网盘链接', (WidgetTester tester) async {
+  testWidgets('检查更新：先显示版本号，再前往下载链接', (WidgetTester tester) async {
     await openMine(tester);
 
-    // 平台通道需要真实异步环境（测试中无法真正调起浏览器）
+    await tester.tap(find.text('检查更新'));
+    await tester.pumpAndSettle();
+
+    // 先弹悬浮窗展示当前版本，不直接跳转
+    expect(find.text('当前版本'), findsOneWidget);
+    expect(find.text('v1.1.0'), findsOneWidget);
+    expect(find.text('跳转到下载链接'), findsOneWidget);
+    expect(find.text('取消'), findsOneWidget);
+
+    // 点「跳转到下载链接」后才走外链（测试环境无法调起浏览器 → 兜底弹层）
     await tester.runAsync(() async {
-      await tester.tap(find.text('检查更新'));
+      await tester.tap(find.text('跳转到下载链接'));
       await Future<void>.delayed(const Duration(milliseconds: 200));
     });
     await tester.pumpAndSettle();
-
-    // 调起失败 → 显示可复制的链接兜底弹层
     expect(find.textContaining('pan.quark.cn'), findsOneWidget);
   });
 
