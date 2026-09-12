@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
@@ -203,19 +204,8 @@ class _CampusLoginCardState extends State<CampusLoginCard> {
           ),
           if (history.isNotEmpty) ...[
             const SizedBox(width: 6),
-            PopupMenuButton<String>(
-              tooltip: '历史账号',
-              color: const Color(0xFF14302E),
-              onSelected: (u) => setState(() => _userCtl.text = u),
-              itemBuilder: (_) => [
-                for (final u in history)
-                  PopupMenuItem(
-                    value: u,
-                    child: Text(u,
-                        style: const TextStyle(
-                            color: Colors.white, fontSize: 13)),
-                  ),
-              ],
+            GestureDetector(
+              onTap: () => _showHistorySheet(context, state, history, theme),
               child: Icon(Icons.arrow_drop_down_rounded,
                   color: Colors.white.withValues(alpha: 0.7)),
             ),
@@ -244,19 +234,8 @@ class _CampusLoginCardState extends State<CampusLoginCard> {
       // ---- 运营商 + 登录 / 注销 ----
       Row(
         children: [
-          PopupMenuButton<CampusService>(
-            tooltip: '选择运营商',
-            color: const Color(0xFF14302E),
-            onSelected: (s) => state.saveCampusAccount(service: s),
-            itemBuilder: (_) => [
-              for (final s in CampusService.values)
-                PopupMenuItem(
-                  value: s,
-                  child: Text(s.label,
-                      style:
-                          const TextStyle(color: Colors.white, fontSize: 13)),
-                ),
-            ],
+          GestureDetector(
+            onTap: () => _showServiceSheet(context, state, service, theme),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
               decoration: BoxDecoration(
@@ -389,8 +368,7 @@ class _CampusLoginCardState extends State<CampusLoginCard> {
     );
   }
 
-  void _showHelp(BuildContext context) {
-    showModalBottomSheet(
+  void _showHelp(BuildContext context) {    showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
       isScrollControlled: true,
@@ -431,6 +409,143 @@ class _CampusLoginCardState extends State<CampusLoginCard> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  // ---------- 玻璃弹层：运营商 / 历史账号 ----------
+
+  void _showServiceSheet(
+      BuildContext context, AppState state, CampusService current, Color theme) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => _optionSheet(
+        title: '选择运营商',
+        children: [
+          for (final s in CampusService.values)
+            _optionRow(
+              label: s.label,
+              subtitle: switch (s) {
+                CampusService.cernet => '校园网（CERNET），一般选这个',
+                CampusService.telecom => '中国电信',
+                CampusService.unicom => '中国联通',
+                CampusService.mobile => '中国移动',
+              },
+              selected: s == current,
+              theme: theme,
+              onTap: () {
+                Navigator.of(sheetCtx).pop();
+                state.saveCampusAccount(service: s);
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _showHistorySheet(BuildContext context, AppState state,
+      List<String> history, Color theme) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetCtx) => _optionSheet(
+        title: '历史账号',
+        children: [
+          for (final u in history)
+            _optionRow(
+              label: u,
+              selected: u == _userCtl.text.trim(),
+              theme: theme,
+              onTap: () {
+                setState(() => _userCtl.text = u);
+                Navigator.of(sheetCtx).pop();
+              },
+              onDelete: () async {
+                Navigator.of(sheetCtx).pop();
+                final list = [...history]..remove(u);
+                await state.updateSettings(state.settings
+                    .copyWith(campusUserHistory: jsonEncode(list)));
+              },
+            ),
+        ],
+      ),
+    );
+  }
+
+  /// 统一风格的玻璃弹层外壳
+  Widget _optionSheet({
+    required String title,
+    required List<Widget> children,
+  }) {
+    return LiquidGlass(
+      radius: BorderRadius.circular(24),
+      margin: const EdgeInsets.fromLTRB(10, 0, 10, 16),
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+      tintAlphaOverride: 0.34,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title,
+              style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800)),
+          const SizedBox(height: 12),
+          ...children,
+        ],
+      ),
+    );
+  }
+
+  Widget _optionRow({
+    required String label,
+    String? subtitle,
+    required bool selected,
+    required Color theme,
+    required VoidCallback onTap,
+    VoidCallback? onDelete,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: LiquidGlass(
+        radius: BorderRadius.circular(13),
+        tintAlphaOverride: selected ? 0.30 : 0.12,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        onTap: onTap,
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label,
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700)),
+                  if (subtitle != null)
+                    Text(subtitle,
+                        style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.55),
+                            fontSize: 11)),
+                ],
+              ),
+            ),
+            if (selected)
+              Icon(Icons.check_rounded, size: 18, color: theme),
+            if (onDelete != null)
+              GestureDetector(
+                onTap: onDelete,
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 10),
+                  child: Icon(Icons.close_rounded,
+                      size: 16, color: Colors.white.withValues(alpha: 0.5)),
+                ),
+              ),
+          ],
         ),
       ),
     );
