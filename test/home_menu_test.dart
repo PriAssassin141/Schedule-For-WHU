@@ -17,7 +17,8 @@ void main() {
     await tester.tap(find.byIcon(Icons.menu_rounded));
     await tester.pumpAndSettle();
 
-    expect(find.textContaining('导入课表'), findsOneWidget);
+    expect(find.text('导入课表（doc / docx / xls / xlsx）'), findsOneWidget);
+    expect(find.text('网页导入课表（教务 / 研究生系统）'), findsOneWidget);
     expect(find.text('添加课程'), findsOneWidget);
     expect(find.textContaining('开学日期'), findsOneWidget);
     expect(find.text('个性化设置'), findsNothing);

@@ -6,6 +6,7 @@ import 'package:class_manager/models/course.dart';
 import 'package:class_manager/models/periods.dart';
 import 'package:class_manager/screens/course_edit_screen.dart';
 import 'package:class_manager/screens/import_preview_screen.dart';
+import 'package:class_manager/screens/web_import_screen.dart';
 import 'package:class_manager/state/app_state.dart';
 import 'package:class_manager/theme/palette.dart';
 import 'package:class_manager/utils/weeks.dart';
@@ -988,6 +989,15 @@ void _showMenuSheet(BuildContext context) {
             onTap: () {
               Navigator.of(context).pop();
               runScheduleImport(context);
+            },
+          ),
+          _ActionRow(
+            icon: Icons.travel_explore_rounded,
+            label: '网页导入课表（教务 / 研究生系统）',
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const WebImportScreen()));
             },
           ),
           _ActionRow(

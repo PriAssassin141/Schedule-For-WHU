@@ -57,6 +57,9 @@ class AppSettings {
   /// 历史账号列表（JSON 数组，用于账号下拉）。
   String campusUserHistory;
 
+  /// 上次成功提取课表的网页地址（网页导入时优先打开）。
+  String webImportUrl;
+
   AppSettings({
     this.startDate = '2026-09-07',
     this.themeColorIndex = 0,
@@ -77,6 +80,7 @@ class AppSettings {
     this.campusService = 'Internet',
     this.campusAutoLogin = true,
     this.campusUserHistory = '[]',
+    this.webImportUrl = '',
   });
 
   Map<String, Object?> toMap() => {
@@ -99,6 +103,7 @@ class AppSettings {
         'campus_service': campusService,
         'campus_auto_login': campusAutoLogin ? 1 : 0,
         'campus_user_history': campusUserHistory,
+        'web_import_url': webImportUrl,
       };
 
   factory AppSettings.fromMap(Map<String, Object?> m) => AppSettings(
@@ -121,6 +126,7 @@ class AppSettings {
         campusService: (m['campus_service'] as String?) ?? 'Internet',
         campusAutoLogin: ((m['campus_auto_login'] as int?) ?? 1) == 1,
         campusUserHistory: (m['campus_user_history'] as String?) ?? '[]',
+        webImportUrl: (m['web_import_url'] as String?) ?? '',
       );
 
   AppSettings copyWith({
@@ -144,6 +150,7 @@ class AppSettings {
     String? campusService,
     bool? campusAutoLogin,
     String? campusUserHistory,
+    String? webImportUrl,
   }) =>
       AppSettings(
         startDate: startDate ?? this.startDate,
@@ -167,5 +174,6 @@ class AppSettings {
         campusService: campusService ?? this.campusService,
         campusAutoLogin: campusAutoLogin ?? this.campusAutoLogin,
         campusUserHistory: campusUserHistory ?? this.campusUserHistory,
+        webImportUrl: webImportUrl ?? this.webImportUrl,
       );
 }

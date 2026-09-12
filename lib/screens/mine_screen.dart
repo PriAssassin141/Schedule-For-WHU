@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:class_manager/screens/personalization_screen.dart';
+import 'package:class_manager/screens/web_import_screen.dart';
 import 'package:class_manager/state/app_state.dart';
 import 'package:class_manager/theme/palette.dart';
 import 'package:class_manager/utils/greeting.dart';
@@ -79,6 +80,15 @@ class MineScreen extends StatelessWidget {
             subtitle: '主题颜色 · 液态玻璃 · 背景模糊 · 壁纸',
             onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const PersonalizationScreen())),
+          ),
+          const SizedBox(height: 12),
+          // ---- 网页导入课表（内置浏览器登录教务/研究生系统后一键提取）----
+          _SettingTile(
+            icon: Icons.travel_explore_rounded,
+            title: '从教务系统导入课表',
+            subtitle: '内置浏览器登录统一身份认证，一键提取课表',
+            onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const WebImportScreen())),
           ),
           const SizedBox(height: 12),
           // ---- 获取源码 ----
