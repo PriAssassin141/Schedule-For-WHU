@@ -57,6 +57,8 @@ void main() {
     expect(find.text('关于'), findsNothing);
     expect(find.text('开学日期'), findsNothing);
     expect(find.text('导入课表'), findsNothing);
+    // 网页导入入口已从「我的」页移除（保留在主页菜单）
+    expect(find.text('从教务系统导入课表'), findsNothing);
 
     // 卡片顺序：个性化设置 → 获取源码 → 联系作者/关于软件/检查更新
     final personalization = tester.getTopLeft(find.text('个性化设置')).dy;
