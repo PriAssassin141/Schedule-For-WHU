@@ -16,7 +16,7 @@ class MineScreen extends StatelessWidget {
   static const String _qq = '1224850644';
   static const String _wechat = 'Assassin141_CUMT';
   static const String _email = '1224850644@qq.com';
-  static const String _updateUrl = 'https://pan.quark.cn/s/b57d9dfe897a';
+  static const String _updateUrl = 'https://pan.quark.cn/s/b2adc2472b96';
   static const String _repoUrl =
       'https://github.com/PriAssassin141/Schedule-For-WHU';
   static const String _aboutText =

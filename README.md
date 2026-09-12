@@ -225,4 +225,4 @@ flutter test
 - 微信：`Assassin141_CUMT`
 - 邮箱：`1224850644@qq.com`
 - GitHub：<https://github.com/PriAssassin141/Schedule-For-WHU>
-- 下载最新版：<https://pan.quark.cn/s/b57d9dfe897a>
+- 下载最新版：<https://pan.quark.cn/s/b2adc2472b96>
