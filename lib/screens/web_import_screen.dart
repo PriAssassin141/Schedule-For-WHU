@@ -10,6 +10,7 @@ import 'package:class_manager/screens/import_preview_screen.dart';
 import 'package:class_manager/services/schedule_importer.dart';
 import 'package:class_manager/state/app_state.dart';
 import 'package:class_manager/theme/palette.dart';
+import 'package:class_manager/utils/links.dart';
 import 'package:class_manager/widgets/app_background.dart';
 import 'package:class_manager/widgets/glass.dart';
 
@@ -26,6 +27,9 @@ class WebImportScreen extends StatefulWidget {
   static const String undergraduateUrl =
       'https://jwgl.whu.edu.cn/kbcx/xskbcx_cxXskbcxIndex.html';
 
+  /// 学校 VPN 门户（校外访问校内系统）
+  static const String vpnUrl = 'https://vpn.whu.edu.cn';
+
   @override
   State<WebImportScreen> createState() => _WebImportScreenState();
 }
@@ -37,6 +41,8 @@ class _WebImportScreenState extends State<WebImportScreen> {
   double _progress = 0;
   bool _extracting = false;
   bool _autoFilled = false;
+  bool _loadFailed = false;
+  String _failDetail = '';
 
   bool get _supported => Platform.isAndroid || Platform.isIOS;
 
@@ -50,13 +56,26 @@ class _WebImportScreenState extends State<WebImportScreen> {
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(NavigationDelegate(
         onProgress: (p) => setState(() => _progress = p / 100),
-        onPageStarted: (_) => setState(() => _loading = true),
+        onPageStarted: (_) => setState(() {
+          _loading = true;
+          _loadFailed = false;
+        }),
         onPageFinished: (url) async {
           setState(() {
             _loading = false;
             _url = url;
+            _loadFailed = false;
           });
           await _tryAutoFillCas(url);
+        },
+        onWebResourceError: (err) {
+          // 主文档加载失败（多为校内域名校外无法解析）
+          if (err.isForMainFrame == false) return;
+          setState(() {
+            _loading = false;
+            _loadFailed = true;
+            _failDetail = err.description;
+          });
         },
       ))
       ..loadRequest(Uri.parse(_url));
@@ -67,10 +86,10 @@ class _WebImportScreenState extends State<WebImportScreen> {
     if (!url.contains('/authserver/login')) return;
     if (_autoFilled) return;
     final state = context.read<AppState>();
-    final user = state.settings.campusUser.trim();
-    final pwd = state.settings.campusPassword;
+    final user = state.settings.portalUser.trim();
+    final pwd = state.settings.portalPassword;
     if (user.isEmpty || pwd.isEmpty) {
-      _snack('检测到统一身份认证登录页：请先在「我的 → 校园网自动登录」里保存学号与密码，即可自动登录');
+      _snack('检测到统一身份认证登录页：点右上角「账号」保存学号与密码后即可自动登录');
       return;
     }
     _autoFilled = true;
@@ -173,6 +192,211 @@ class _WebImportScreenState extends State<WebImportScreen> {
         SnackBar(content: Text(msg), duration: const Duration(seconds: 3)));
   }
 
+  /// 主文档加载失败提示（校内域名在校外无法解析 / 无网络）。
+  Widget _failOverlay(Color theme) {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.45),
+      child: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(18),
+          child: LiquidGlass(
+            radius: BorderRadius.circular(20),
+            padding: const EdgeInsets.fromLTRB(18, 18, 18, 16),
+            tintAlphaOverride: 0.38,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.wifi_off_rounded, size: 18, color: theme),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text('无法打开该网页',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w800)),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  '研究生综合服务平台（ewyjs.whu.edu.cn）只能在校内网络访问，'
+                  '校外会提示域名无法解析。\n\n'
+                  '· 连接校园网 ${'WHU-STUDENT-WIFI'} 后重试（推荐）\n'
+                  '· 或先登录学校 VPN：vpn.whu.edu.cn\n'
+                  '· 本科教务（jwgl.whu.edu.cn）在校外也可直接访问\n'
+                  '· 也可以改用「文件导入」：在电脑上导出课表 doc 后传手机导入',
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.85),
+                      fontSize: 12.5,
+                      height: 1.65),
+                ),
+                if (_failDetail.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  Text(_failDetail,
+                      style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.45),
+                          fontSize: 10.5)),
+                ],
+                const SizedBox(height: 14),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    _overlayButton(
+                      label: '打开学校 VPN',
+                      theme: theme,
+                      onTap: () => openExternalLink(context, WebImportScreen.vpnUrl),
+                    ),
+                    _overlayButton(
+                      label: '改用文件导入',
+                      theme: theme,
+                      onTap: () => runScheduleImport(context),
+                    ),
+                    _overlayButton(
+                      label: '重试',
+                      theme: theme,
+                      onTap: () => _controller?.reload(),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _overlayButton({
+    required String label,
+    required Color theme,
+    required VoidCallback onTap,
+  }) {
+    return SizedBox(
+      height: 38,
+      child: LiquidGlass(
+        radius: BorderRadius.circular(11),
+        padding: EdgeInsets.zero,
+        tintColor: theme,
+        tintAlphaOverride: 0.55,
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          child: Center(
+            child: Text(label,
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w700)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  /// 保存统一身份认证账号（用于 CAS 登录页自动填充）。
+  void _showAccountSheet() {
+    final state = context.read<AppState>();
+    final userCtl =
+        TextEditingController(text: state.settings.portalUser);
+    final pwdCtl =
+        TextEditingController(text: state.settings.portalPassword);
+    final theme = themeColorOf(state.settings);
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (sheetCtx) => LiquidGlass(
+        radius: BorderRadius.circular(24),
+        margin: const EdgeInsets.fromLTRB(10, 0, 10, 16),
+        padding: const EdgeInsets.fromLTRB(18, 18, 18, 20),
+        tintAlphaOverride: 0.34,
+        child: Padding(
+          padding: EdgeInsets.only(
+              bottom: MediaQuery.of(sheetCtx).viewInsets.bottom),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('统一身份认证账号',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800)),
+              const SizedBox(height: 6),
+              Text('保存后，登录页会自动填写并提交；账号密码仅保存在本机。',
+                  style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.6),
+                      fontSize: 11.5)),
+              const SizedBox(height: 14),
+              _sheetField(userCtl, '学号'),
+              const SizedBox(height: 10),
+              _sheetField(pwdCtl, '密码', obscure: true),
+              const SizedBox(height: 16),
+              SizedBox(
+                width: double.infinity,
+                height: 44,
+                child: LiquidGlass(
+                  radius: BorderRadius.circular(13),
+                  padding: EdgeInsets.zero,
+                  tintColor: theme,
+                  tintAlphaOverride: 0.75,
+                  onTap: () async {
+                    await state.updateSettings(state.settings.copyWith(
+                      portalUser: userCtl.text.trim(),
+                      portalPassword: pwdCtl.text,
+                    ));
+                    if (sheetCtx.mounted) Navigator.of(sheetCtx).pop();
+                    if (mounted) _snack('已保存账号，下次登录页会自动填充');
+                  },
+                  child: const Center(
+                    child: Text('保存',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800)),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ).whenComplete(() {
+      userCtl.dispose();
+      pwdCtl.dispose();
+    });
+  }
+
+  Widget _sheetField(TextEditingController ctl, String hint,
+      {bool obscure = false}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(11),
+      ),
+      child: TextField(
+        controller: ctl,
+        obscureText: obscure,
+        style: const TextStyle(color: Colors.white, fontSize: 13.5),
+        cursorColor: Colors.white,
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(
+              color: Colors.white.withValues(alpha: 0.35), fontSize: 12.5),
+          border: InputBorder.none,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = themeColorOf(context.watch<AppState>().settings);
@@ -226,6 +450,9 @@ class _WebImportScreenState extends State<WebImportScreen> {
                   if (_loading)
                     const Center(
                         child: CircularProgressIndicator(strokeWidth: 2)),
+                  // ---- 主文档加载失败（校内域名校外无法解析）----
+                  if (_loadFailed)
+                    Positioned.fill(child: _failOverlay(theme)),
                 ],
               ),
             ),
@@ -240,6 +467,13 @@ class _WebImportScreenState extends State<WebImportScreen> {
                     style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.6),
                         fontSize: 11),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    '提示：研究生系统仅校内可访问；本科教务校外也能打开',
+                    style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.42),
+                        fontSize: 10.5),
                   ),
                   const SizedBox(height: 8),
                   Row(
@@ -256,6 +490,13 @@ class _WebImportScreenState extends State<WebImportScreen> {
                         active: _url.contains('jwgl'),
                         onTap: () => _controller?.loadRequest(
                             Uri.parse(WebImportScreen.undergraduateUrl)),
+                      ),
+                      const SizedBox(width: 6),
+                      _miniButton(
+                        label: '学校 VPN',
+                        active: false,
+                        onTap: () => _controller?.loadRequest(
+                            Uri.parse(WebImportScreen.vpnUrl)),
                       ),
                       const Spacer(),
                       SizedBox(
@@ -322,12 +563,19 @@ class _WebImportScreenState extends State<WebImportScreen> {
               ],
             ),
           ),
-          if (_controller != null)
+          if (_controller != null) ...[
+            GlassIconButton(
+              icon: Icons.person_outline_rounded,
+              size: 34,
+              onTap: _showAccountSheet,
+            ),
+            const SizedBox(width: 8),
             GlassIconButton(
               icon: Icons.refresh_rounded,
               size: 34,
               onTap: () => _controller?.reload(),
             ),
+          ],
         ],
       ),
     );

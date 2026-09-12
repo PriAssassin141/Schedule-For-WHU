@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 import 'dart:ui' show Color;
 
@@ -10,7 +9,6 @@ import 'package:class_manager/db/app_database.dart';
 import 'package:class_manager/models/app_settings.dart';
 import 'package:class_manager/models/course.dart';
 import 'package:class_manager/models/exam.dart';
-import 'package:class_manager/services/campus_net.dart';
 import 'package:class_manager/services/schedule_parser.dart';
 import 'package:class_manager/theme/palette.dart';
 import 'package:class_manager/utils/weeks.dart';
@@ -27,9 +25,6 @@ class AppState extends ChangeNotifier {
   int browseWeek = 1; // 当前浏览的周
   bool bannerExpanded = true;
 
-  /// 校园网状态提示（临时状态，不持久化）
-  String campusStatus = '';
-  bool campusBusy = false;
 
   AppState(this.db);
 
@@ -247,102 +242,5 @@ class AppState extends ChangeNotifier {
     final file = File(p.join(wallDir.path, name));
     await file.writeAsBytes(bytes);
     return file.path;
-  }
-
-  // ---------- 校园网 ----------
-
-  /// 历史账号（用于账号下拉）。
-  List<String> get campusUserHistory {
-    try {
-      final list = jsonDecode(settings.campusUserHistory) as List;
-      return list.map((e) => e.toString()).toList();
-    } catch (_) {
-      return const [];
-    }
-  }
-
-  /// 保存校园网账号 / 运营商 / 自动登录开关。
-  Future<void> saveCampusAccount({
-    String? user,
-    String? password,
-    CampusService? service,
-    bool? autoLogin,
-  }) =>
-      updateSettings(settings.copyWith(
-        campusUser: user,
-        campusPassword: password,
-        campusService: service?.code,
-        campusAutoLogin: autoLogin,
-      ));
-
-  /// 登录成功后把账号加入历史列表（最多 5 个）。
-  Future<void> _rememberCampusUser(String user) async {
-    final u = user.trim();
-    if (u.isEmpty) return;
-    final list = campusUserHistory..remove(u);
-    list.insert(0, u);
-    final trimmed = list.take(5).toList();
-    await updateSettings(
-        settings.copyWith(campusUserHistory: jsonEncode(trimmed)));
-  }
-
-  /// 手动登录校园网。
-  Future<String> campusLogin({CampusService? service}) async {
-    if (campusBusy) return campusStatus;
-    campusBusy = true;
-    campusStatus = '正在登录校园网…';
-    notifyListeners();
-
-    final svc = service ?? CampusService.fromCode(settings.campusService);
-    final res = await CampusNet.login(
-      username: settings.campusUser,
-      password: settings.campusPassword,
-      service: svc,
-    );
-    campusBusy = false;
-    campusStatus = res.message;
-    if (res.success) {
-      await _rememberCampusUser(settings.campusUser);
-    } else {
-      notifyListeners();
-    }
-    return res.message;
-  }
-
-  /// 注销校园网。
-  Future<String> campusLogout() async {
-    if (campusBusy) return campusStatus;
-    campusBusy = true;
-    campusStatus = '正在注销…';
-    notifyListeners();
-    final res = await CampusNet.logout();
-    campusBusy = false;
-    campusStatus = res.message;
-    notifyListeners();
-    return res.message;
-  }
-
-  /// 自动登录：连接武大校园 WiFi 且已保存账号时执行。
-  ///
-  /// 返回登录结果文案；未执行时返回 null。
-  Future<String?> tryCampusAutoLogin() async {
-    if (campusBusy) return null;
-    if (!settings.campusAutoLogin) return null;
-    if (settings.campusUser.trim().isEmpty || settings.campusPassword.isEmpty) {
-      return null;
-    }
-    campusBusy = true;
-    campusStatus = '正在自动登录校园网…';
-    notifyListeners();
-
-    final res = await CampusNet.autoLogin(
-      username: settings.campusUser,
-      password: settings.campusPassword,
-      service: CampusService.fromCode(settings.campusService),
-    );
-    campusBusy = false;
-    campusStatus = res.message;
-    notifyListeners();
-    return res.message;
   }
 }

@@ -17,32 +17,8 @@ class RootShell extends StatefulWidget {
   State<RootShell> createState() => _RootShellState();
 }
 
-class _RootShellState extends State<RootShell> with WidgetsBindingObserver {
+class _RootShellState extends State<RootShell> {
   int _tab = 0;
-
-  @override
-  void initState() {
-    super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    // 启动时尝试自动登录校园网（仅在连接武大 WiFi 且已保存账号时执行）
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) context.read<AppState>().tryCampusAutoLogin();
-    });
-  }
-
-  @override
-  void dispose() {
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // 从后台回到前台时重试自动登录
-    if (state == AppLifecycleState.resumed && mounted) {
-      context.read<AppState>().tryCampusAutoLogin();
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
