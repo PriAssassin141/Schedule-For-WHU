@@ -45,7 +45,7 @@ class GlassDialog extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 if (title != null) ...[
-                  DefaultTextStyle(
+                  DefaultTextStyle.merge(
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 19,
