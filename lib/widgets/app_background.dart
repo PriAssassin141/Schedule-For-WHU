@@ -30,7 +30,7 @@ class BackgroundedScaffold extends StatelessWidget {
 /// 全屏背景：用户壁纸 → 内置默认壁纸 → 渐变兜底。
 ///
 /// 背景配色固定，**不随「主题颜色」变化**（主题色只作用于按钮、卡片、
-/// 滑杆等控件）。仅「背景模糊 / 饱和度 / 折射」等设置会影响背景。
+/// 滑杆等控件）。折射在玻璃面板内应用，不改变整张壁纸。
 class AppBackground extends StatelessWidget {
   const AppBackground({super.key});
 
@@ -53,22 +53,6 @@ class AppBackground extends StatelessWidget {
               : const AssetImage(defaultWallpaperAsset),
           blur: settings.backgroundBlur,
         ),
-        // 折射：一层错位幽灵背景（仅用户自选壁纸时）
-        if (settings.refraction > 0.03 && hasUserWallpaper)
-          Positioned.fill(
-            child: Transform.translate(
-              offset: Offset(settings.refraction * 16, settings.refraction * 4),
-              child: Opacity(
-                opacity: 0.35 + settings.refraction * 0.4,
-                child: ImageFiltered(
-                  imageFilter: ui.ImageFilter.blur(
-                      sigmaX: 6 * settings.refraction,
-                      sigmaY: 6 * settings.refraction),
-                  child: Image(image: FileImage(File(path))),
-                ),
-              ),
-            ),
-          ),
         // 暗角，保证前景文字可读
         Positioned.fill(
           child: DecoratedBox(
@@ -118,10 +102,7 @@ class WaveBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _WavePainter(),
-      child: const SizedBox.expand(),
-    );
+    return CustomPaint(painter: _WavePainter(), child: const SizedBox.expand());
   }
 }
 
@@ -146,7 +127,11 @@ class _WavePainter extends CustomPainter {
       canvas.save();
       canvas.translate(center.dx, center.dy);
       canvas.rotate(angle);
-      final r = Rect.fromCenter(center: Offset.zero, width: rx * 2, height: ry * 2);
+      final r = Rect.fromCenter(
+        center: Offset.zero,
+        width: rx * 2,
+        height: ry * 2,
+      );
       final shader = RadialGradient(
         colors: [color, color.withValues(alpha: 0.0)],
       ).createShader(r);
@@ -154,24 +139,44 @@ class _WavePainter extends CustomPainter {
       canvas.restore();
     }
 
-    blob(Offset(size.width * 0.15, size.height * 0.16),
-        size.width * 0.55, size.height * 0.30,
-        _accent.withValues(alpha: 0.30), -0.35);
-    blob(Offset(size.width * 0.9, size.height * 0.38),
-        size.width * 0.60, size.height * 0.26,
-        _accent.withValues(alpha: 0.18), 0.3);
-    blob(Offset(size.width * 0.4, size.height * 0.85),
-        size.width * 0.75, size.height * 0.38,
-        _accent.withValues(alpha: 0.22), 0.2);
-    blob(Offset(size.width * -0.1, size.height * 0.68),
-        size.width * 0.5, size.height * 0.22,
-        const Color(0xFF66D3C0).withValues(alpha: 0.14), -0.2);
+    blob(
+      Offset(size.width * 0.15, size.height * 0.16),
+      size.width * 0.55,
+      size.height * 0.30,
+      _accent.withValues(alpha: 0.30),
+      -0.35,
+    );
+    blob(
+      Offset(size.width * 0.9, size.height * 0.38),
+      size.width * 0.60,
+      size.height * 0.26,
+      _accent.withValues(alpha: 0.18),
+      0.3,
+    );
+    blob(
+      Offset(size.width * 0.4, size.height * 0.85),
+      size.width * 0.75,
+      size.height * 0.38,
+      _accent.withValues(alpha: 0.22),
+      0.2,
+    );
+    blob(
+      Offset(size.width * -0.1, size.height * 0.68),
+      size.width * 0.5,
+      size.height * 0.22,
+      const Color(0xFF66D3C0).withValues(alpha: 0.14),
+      -0.2,
+    );
 
     // 一缕斜向流光带
     canvas.save();
     canvas.rotate(-0.22);
-    final bandRect = Rect.fromLTWH(-size.width * 0.4, size.height * 0.42,
-        size.width * 2.0, size.height * 0.10);
+    final bandRect = Rect.fromLTWH(
+      -size.width * 0.4,
+      size.height * 0.42,
+      size.width * 2.0,
+      size.height * 0.10,
+    );
     canvas.drawRect(
       bandRect,
       Paint()

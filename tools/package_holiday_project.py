@@ -24,6 +24,12 @@ new_files = [
     'lib/widgets/glass_dialog.dart',
     'test/future_holiday_test.dart',
     'test/glass_dialog_flow_test.dart',
+    'lib/widgets/glass_backdrop.dart',
+    'shaders/liquid_glass.frag',
+    'test/glass_optics_test.dart',
+    'docs/LIQUID_GLASS.md',
+    'THIRD_PARTY_NOTICES.md',
+    'tools/glass_preview_test.dart',
 ]
 patch_parts = []
 changes = []

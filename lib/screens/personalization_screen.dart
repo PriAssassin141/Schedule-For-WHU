@@ -33,11 +33,14 @@ class PersonalizationScreen extends StatelessWidget {
                 onTap: () => Navigator.of(context).pop(),
               ),
               const SizedBox(width: 12),
-              const Text('个性化',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800)),
+              const Text(
+                '个性化',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ],
           ),
           const SizedBox(height: 18),
@@ -61,7 +64,8 @@ class PersonalizationScreen extends StatelessWidget {
                 for (var i = 0; i < kThemeColors.length; i++)
                   GestureDetector(
                     onTap: () => state.updateSettings(
-                        settings.copyWith(themeColorIndex: i)),
+                      settings.copyWith(themeColorIndex: i),
+                    ),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 220),
                       width: 34,
@@ -72,11 +76,15 @@ class PersonalizationScreen extends StatelessWidget {
                         border: settings.themeColorIndex == i
                             ? Border.all(color: Colors.white, width: 2.5)
                             : Border.all(
-                                color: Colors.white.withValues(alpha: 0.25)),
+                                color: Colors.white.withValues(alpha: 0.25),
+                              ),
                       ),
                       child: settings.themeColorIndex == i
-                          ? const Icon(Icons.check_rounded,
-                              color: Colors.white, size: 17)
+                          ? const Icon(
+                              Icons.check_rounded,
+                              color: Colors.white,
+                              size: 17,
+                            )
                           : null,
                     ),
                   ),
@@ -102,25 +110,30 @@ class PersonalizationScreen extends StatelessWidget {
                 GlassSliderRow(
                   title: '背景模糊',
                   value: settings.backgroundBlur,
-                  min: 0, max: 1,
+                  min: 0,
+                  max: 1,
                   label: (v) => (v * 100).round().toString(),
-                  onChanged: (v) =>
-                      state.updateSettings(settings.copyWith(backgroundBlur: v)),
+                  onChanged: (v) => state.updateSettings(
+                    settings.copyWith(backgroundBlur: v),
+                  ),
                   showDivider: true,
                 ),
                 GlassSliderRow(
                   title: '卡片透明',
                   value: settings.cardTransparency,
-                  min: 0, max: 1,
+                  min: 0,
+                  max: 1,
                   label: (v) => (v * 100).round().toString(),
-                  onChanged: (v) =>
-                      state.updateSettings(settings.copyWith(cardTransparency: v)),
+                  onChanged: (v) => state.updateSettings(
+                    settings.copyWith(cardTransparency: v),
+                  ),
                   showDivider: true,
                 ),
                 GlassSliderRow(
                   title: '卡片背景模糊',
                   value: settings.cardBlur,
-                  min: 0, max: 1,
+                  min: 0,
+                  max: 1,
                   label: (v) => (v * 100).round().toString(),
                   onChanged: (v) =>
                       state.updateSettings(settings.copyWith(cardBlur: v)),
@@ -128,16 +141,25 @@ class PersonalizationScreen extends StatelessWidget {
                 ),
                 GlassSwitchRow(
                   title: '液态玻璃',
-                  subtitle: '性能要求高',
+                  subtitle: '边缘折射与流动高光',
                   value: settings.liquidGlass,
                   onChanged: (v) =>
                       state.updateSettings(settings.copyWith(liquidGlass: v)),
                   showDivider: true,
                 ),
+                GlassSwitchRow(
+                  title: '果冻效果',
+                  subtitle: '按压时弹性回弹',
+                  value: settings.jellyEffect,
+                  onChanged: (v) =>
+                      state.updateSettings(settings.copyWith(jellyEffect: v)),
+                  showDivider: true,
+                ),
                 GlassSliderRow(
                   title: '饱和度',
                   value: settings.saturation,
-                  min: 0, max: 2,
+                  min: 0,
+                  max: 2,
                   label: (v) => v.toStringAsFixed(1),
                   onChanged: (v) =>
                       state.updateSettings(settings.copyWith(saturation: v)),
@@ -146,7 +168,8 @@ class PersonalizationScreen extends StatelessWidget {
                 GlassSliderRow(
                   title: '折射',
                   value: settings.refraction,
-                  min: 0, max: 1,
+                  min: 0,
+                  max: 1,
                   label: (v) => (v * 100).round().toString(),
                   onChanged: (v) =>
                       state.updateSettings(settings.copyWith(refraction: v)),
@@ -155,7 +178,8 @@ class PersonalizationScreen extends StatelessWidget {
                 GlassSliderRow(
                   title: '色散',
                   value: settings.dispersion,
-                  min: 0, max: 1,
+                  min: 0,
+                  max: 1,
                   label: (v) => (v * 100).round().toString(),
                   onChanged: (v) =>
                       state.updateSettings(settings.copyWith(dispersion: v)),
@@ -182,7 +206,8 @@ class PersonalizationScreen extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: Colors.black26,
                     borderRadius: BorderRadius.circular(12),
-                    image: settings.wallpaperPath != null &&
+                    image:
+                        settings.wallpaperPath != null &&
                             File(settings.wallpaperPath!).existsSync()
                         ? DecorationImage(
                             image: FileImage(File(settings.wallpaperPath!)),
@@ -191,8 +216,10 @@ class PersonalizationScreen extends StatelessWidget {
                         : null,
                   ),
                   child: settings.wallpaperPath == null
-                      ? Icon(Icons.image_rounded,
-                          color: Colors.white.withValues(alpha: 0.6))
+                      ? Icon(
+                          Icons.image_rounded,
+                          color: Colors.white.withValues(alpha: 0.6),
+                        )
                       : null,
                 ),
                 const SizedBox(width: 12),
@@ -201,34 +228,41 @@ class PersonalizationScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        settings.wallpaperPath == null
-                            ? '使用内置流光渐变'
-                            : '已导入壁纸',
+                        settings.wallpaperPath == null ? '使用内置流光渐变' : '已导入壁纸',
                         style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w700),
+                          color: Colors.white,
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       const SizedBox(height: 3),
-                      Text('选择手机相册中的图片作为背景',
-                          style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.55),
-                              fontSize: 11)),
+                      Text(
+                        '选择手机相册中的图片作为背景',
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.55),
+                          fontSize: 11,
+                        ),
+                      ),
                     ],
                   ),
                 ),
                 TextButton(
                   onPressed: () => _pickWallpaper(context),
-                  child: Text('选择图片',
-                      style: TextStyle(
-                          color: theme, fontWeight: FontWeight.w800)),
+                  child: Text(
+                    '选择图片',
+                    style: TextStyle(color: theme, fontWeight: FontWeight.w800),
+                  ),
                 ),
                 if (settings.wallpaperPath != null)
                   IconButton(
                     onPressed: () => state.updateSettings(
-                        settings.copyWith(clearWallpaper: true)),
-                    icon: Icon(Icons.restart_alt_rounded,
-                        color: Colors.white.withValues(alpha: 0.7), size: 20),
+                      settings.copyWith(clearWallpaper: true),
+                    ),
+                    icon: Icon(
+                      Icons.restart_alt_rounded,
+                      color: Colors.white.withValues(alpha: 0.7),
+                      size: 20,
+                    ),
                     tooltip: '恢复默认',
                   ),
               ],
@@ -236,9 +270,13 @@ class PersonalizationScreen extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           Center(
-            child: Text('所有设置即时生效并保存在本地',
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.45), fontSize: 11)),
+            child: Text(
+              '所有设置即时生效并保存在本地',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.45),
+                fontSize: 11,
+              ),
+            ),
           ),
         ],
       ),
@@ -262,16 +300,20 @@ class PersonalizationScreen extends StatelessWidget {
     if (bytes == null) return;
     try {
       final path = await state.importWallpaper(bytes, f.name);
-      await state.updateSettings(
-          state.settings.copyWith(wallpaperPath: path));
+      await state.updateSettings(state.settings.copyWith(wallpaperPath: path));
       if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-            content: Text('壁纸已导入'), duration: Duration(seconds: 1)));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('壁纸已导入'),
+            duration: Duration(seconds: 1),
+          ),
+        );
       }
     } catch (e) {
       if (context.mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text('导入失败：$e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('导入失败：$e')));
       }
     }
   }
@@ -285,11 +327,14 @@ class _SectionTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
-      child: Text(title,
-          style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.8),
-              fontSize: 14,
-              fontWeight: FontWeight.w800)),
+      child: Text(
+        title,
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.8),
+          fontSize: 14,
+          fontWeight: FontWeight.w800,
+        ),
+      ),
     );
   }
 }
@@ -337,12 +382,15 @@ class _NameCardState extends State<_NameCard> {
               decoration: InputDecoration(
                 hintText: '输入名字，用于「我的」页问候语',
                 hintStyle: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4), fontSize: 13),
+                  color: Colors.white.withValues(alpha: 0.4),
+                  fontSize: 13,
+                ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 12),
               ),
-              onChanged: (v) => widget.state
-                  .updateSettings(widget.state.settings.copyWith(userName: v)),
+              onChanged: (v) => widget.state.updateSettings(
+                widget.state.settings.copyWith(userName: v),
+              ),
             ),
           ),
         ],
