@@ -1,0 +1,63 @@
+from pathlib import Path
+import difflib
+import json
+import zipfile
+
+project = Path(__file__).resolve().parents[1]
+artifacts = project / 'artifacts'
+artifacts.mkdir(exist_ok=True)
+baseline_path = project / '.packaging' / 'ClassManager-v1.0.3-base.zip'
+new_files = [
+    'lib/models/schedule_adjustment.dart',
+    'lib/services/holiday_calendar.dart',
+    'lib/services/schedule_resolver.dart',
+    'lib/screens/schedule_adjustment_screen.dart',
+    'test/holiday_schedule_test.dart',
+    'test/holiday_database_test.dart',
+    'test/holiday_ui_test.dart',
+    'docs/HOLIDAY_REORDER.md',
+    'lib/widgets/course_info_dialog.dart',
+    'test/course_info_dialog_test.dart',
+    'tools/package_holiday_project.py',
+    'tools/package.ps1',
+    'AGENTS.md',
+    'lib/widgets/glass_dialog.dart',
+    'test/future_holiday_test.dart',
+    'test/glass_dialog_flow_test.dart',
+]
+patch_parts = []
+changes = []
+with zipfile.ZipFile(baseline_path) as baseline:
+    baseline_files = [i.filename for i in baseline.infolist() if not i.is_dir()]
+    for name in sorted(set(baseline_files + new_files)):
+        previous = baseline.read(name) if name in baseline_files else b''
+        current = (project / name).read_bytes()
+        if previous == current:
+            continue
+        try:
+            old_lines = previous.decode('utf-8-sig').replace('\r\n', '\n').splitlines(keepends=True)
+            new_lines = current.decode('utf-8-sig').replace('\r\n', '\n').splitlines(keepends=True)
+        except UnicodeDecodeError:
+            raise RuntimeError(f'Unexpected binary change: {name}')
+        if old_lines == new_lines:
+            continue
+        patch_parts.append(f'diff --git a/{name} b/{name}\n')
+        if name not in baseline_files:
+            patch_parts.append('new file mode 100644\n')
+        patch_parts.extend(difflib.unified_diff(
+            old_lines, new_lines,
+            fromfile=f'a/{name}' if name in baseline_files else '/dev/null',
+            tofile=f'b/{name}',
+        ))
+        changes.append(name)
+    selected = sorted(set(baseline_files + new_files))
+    source_zip = artifacts / 'ClassManager-v1.0.4-source.zip'
+    with zipfile.ZipFile(source_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
+        for name in selected:
+            archive.write(project / name, f'ClassManager-New/{name}')
+
+patch_path = artifacts / 'ClassManager-v1.0.3-to-v1.0.4.patch'
+patch_path.write_text(''.join(patch_parts), encoding='utf-8', newline='\n')
+print(json.dumps({'changed_files': changes, 'patch': str(patch_path),
+                  'source_zip': str(source_zip), 'patch_bytes': patch_path.stat().st_size},
+                 ensure_ascii=False, indent=2))

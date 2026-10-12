@@ -19,8 +19,23 @@
 - **周一~周日同屏显示**：一天 13 节 × 一周 7 天全部在一屏内呈现，行高按屏幕高度自适应，无需上下滚动即可看到晚上的课
 - **上下拖动翻页切换周次**：跟手拖动、松手自动翻页或回弹，被翻走的页面整页丝滑滑出；非本周时显示「回到本周」悬浮按钮
 - 点击「第 N 周」可弹出周次网格，直接跳转任意一周
-- 点击课程卡片直接编辑；长按可编辑 / 更换颜色 / 删除
+- 点击课程卡片先查看居中的信息卡片（地点、老师、周次、时间、日期与备注），点击「编辑」再进入编辑页；长按可编辑 / 更换颜色 / 删除
 - 课程重叠时自动分栏显示
+
+### 节假日与调休（v1.0.4 新增）
+
+- 主页菜单 → **节假日与调休**，开启「智能重排课表」后即时生效；也可点击课表日期直接编辑当天安排。
+- 支持 **2025—2035 年**：已公布的年度安排按实际放假及调休日期执行，未来年份预置法定节日日期，具体调休可按学校通知手动设置。
+- 手动设置 **停课 / 补指定日期的课 / 按原课表上课**，支持同时停课原日期，手动设置优先。
+- 跨周补课按原日期周次筛选，课表卡片、重叠分栏与分享文本同步重排，编辑卡片仍修改原课程。
+- 默认关闭；关闭后恢复原课表，课程、考试、开学日期不变；所有设置保存在本地，旧数据库无需迁移。
+- 未公布的年度调休方案不作推测；春节、端午、中秋和清明日期依据公历农历对照表确定。
+- 所有页面、信息卡片、编辑弹窗、删除确认、年份/节次选项和日期/时间选择器统一使用玻璃样式，随个性化设置切换高斯模糊或液态玻璃。
+
+本副本严格基于 GitHub 标签 `SFW-V1.0.3`（`0ef75ceb70969e0236bc3bb6793ac23ecf77c93b`），版本标记为 `1.0.4+4`。
+设计、日期来源和维护说明见 [节假日与调休说明](docs/HOLIDAY_REORDER.md)。
+
+后续开发统一使用 `ClassManager-New` 目录；编译产物位于 `build/`，交付安装包、源码压缩包和补丁位于 `artifacts/`，此前交付文件位于 `artifacts/previous/`。不向父目录 `Vibe_Coding` 输出文件。
 
 ### 课程管理
 
@@ -93,9 +108,12 @@ lib/
 ├── models/
 │   ├── course.dart               # 课程模型
 │   ├── exam.dart                 # 考试模型
+│   ├── schedule_adjustment.dart  # 按日期的停课 / 补课 / 原课表规则
 │   ├── app_settings.dart         # 个性化设置模型
 │   └── periods.dart              # 武大 13 节时间表
 ├── services/
+│   ├── holiday_calendar.dart     # 国家假日与调休的离线日历
+│   ├── schedule_resolver.dart    # 解析实际授课日期与原课程
 │   ├── schedule_parser.dart      # 表格 → 课程的通用解析
 │   └── schedule_importer.dart    # doc/docx/xls/xlsx/MHTML 导入器
 ├── screens/
@@ -106,9 +124,12 @@ lib/
 │   ├── personalization_screen.dart
 │   ├── course_edit_screen.dart
 │   ├── exam_edit_screen.dart
-│   └── import_preview_screen.dart
+│   ├── import_preview_screen.dart
+│   └── schedule_adjustment_screen.dart
 ├── widgets/
 │   ├── glass.dart                # 液态玻璃组件（卡片 / 行 / 按钮）
+│   ├── course_info_dialog.dart  # 点击课程先显示信息卡片，再通过按钮编辑
+│   ├── glass_dialog.dart        # 统一玻璃弹窗、按钮、选项及日期/时间选择器
 │   └── app_background.dart       # 壁纸 / 渐变背景 + 页面骨架
 ├── utils/
 │   ├── weeks.dart                # 周次解析、压缩、开学日期换算
@@ -150,6 +171,12 @@ flutter test                # 运行全部测试
 
 ```bash
 flutter build apk --release
+```
+
+在 Windows 下可运行以下命令，将安装包、源码压缩包和变更补丁统一写入本工程的 `artifacts/`：
+
+```powershell
+.\tools\package.ps1
 ```
 
 产物：`build/app/outputs/flutter-apk/app-release.apk`（可直接安装到 Android 8.0+ 手机）。

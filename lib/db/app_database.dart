@@ -9,14 +9,26 @@ import 'package:class_manager/models/exam.dart';
 /// SQLite 本地数据库（drift 亦可用，这里选用更轻量的 sqflite）。
 class AppDatabase {
   Database? _db;
+  final String? databasePath;
+
+  AppDatabase({this.databasePath});
 
   Future<Database> get database async {
     if (_db != null) return _db!;
-    final dir = await getApplicationDocumentsDirectory();
-    final path = p.join(dir.path, 'class_manager.db');
+    final path =
+        databasePath ??
+        p.join(
+          (await getApplicationDocumentsDirectory()).path,
+          'class_manager.db',
+        );
     _db = await openDatabase(path, version: 1, onCreate: _onCreate);
     await _initDefaults(_db!);
     return _db!;
+  }
+
+  Future<void> close() async {
+    await _db?.close();
+    _db = null;
   }
 
   Future<void> _onCreate(Database db, int version) async {
@@ -69,8 +81,7 @@ class AppDatabase {
 
   Future<void> updateCourse(Course c) async {
     final db = await database;
-    await db.update('courses', c.toMap(),
-        where: 'id = ?', whereArgs: [c.id]);
+    await db.update('courses', c.toMap(), where: 'id = ?', whereArgs: [c.id]);
   }
 
   Future<void> deleteCourse(int id) async {
@@ -119,11 +130,10 @@ class AppDatabase {
     final db = await database;
     final batch = db.batch();
     s.toMap().forEach((k, v) {
-      batch.insert(
-        'settings',
-        {'key': k, 'value': v?.toString() ?? ''},
-        conflictAlgorithm: ConflictAlgorithm.replace,
-      );
+      batch.insert('settings', {
+        'key': k,
+        'value': v?.toString() ?? '',
+      }, conflictAlgorithm: ConflictAlgorithm.replace);
     });
     await batch.commit(noResult: true);
   }
@@ -132,13 +142,17 @@ class AppDatabase {
 
   /// 仅初始化默认设置；课程 / 考试默认为空，由用户自行添加或导入。
   Future<void> _initDefaults(Database db) async {
-    final settingCount = Sqflite.firstIntValue(
-            await db.rawQuery('SELECT COUNT(*) FROM settings')) ??
+    final settingCount =
+        Sqflite.firstIntValue(
+          await db.rawQuery('SELECT COUNT(*) FROM settings'),
+        ) ??
         0;
     if (settingCount == 0) {
+      final batch = db.batch();
       AppSettings().toMap().forEach((k, v) {
-        db.insert('settings', {'key': k, 'value': v?.toString() ?? ''});
+        batch.insert('settings', {'key': k, 'value': v?.toString() ?? ''});
       });
+      await batch.commit(noResult: true);
     }
   }
 }

@@ -9,6 +9,8 @@ import 'package:class_manager/db/app_database.dart';
 import 'package:class_manager/models/app_settings.dart';
 import 'package:class_manager/models/course.dart';
 import 'package:class_manager/models/exam.dart';
+import 'package:class_manager/models/schedule_adjustment.dart';
+import 'package:class_manager/services/schedule_resolver.dart';
 import 'package:class_manager/services/schedule_parser.dart';
 import 'package:class_manager/theme/palette.dart';
 import 'package:class_manager/utils/weeks.dart';
@@ -56,14 +58,52 @@ class AppState extends ChangeNotifier {
       dateOfWeekDay(week, day, settings.startDate);
 
   /// 课程在第 week 周是否上课。
-  bool courseActiveInWeek(Course c, int week) =>
-      Weeks.contains(c.weeks, week);
+  bool courseActiveInWeek(Course c, int week) => Weeks.contains(c.weeks, week);
 
   /// 指定星期当周的可见课程（按周次过滤）。
-  List<Course> coursesOn(int day, int week) => courses
-      .where((c) => c.day == day && courseActiveInWeek(c, week))
-      .toList()
-    ..sort((a, b) => a.startPeriod.compareTo(b.startPeriod));
+  List<Course> coursesOn(int day, int week) =>
+      occurrencesOn(dateOf(week, day)).map((o) => o.course).toList();
+
+  List<CourseOccurrence> occurrencesOn(DateTime date) =>
+      ScheduleResolver(settings).on(date, courses);
+
+  List<CourseOccurrence> occurrencesInWeek(int week) =>
+      [for (var day = 1; day <= 7; day++) ...occurrencesOn(dateOf(week, day))]
+        ..sort((a, b) => a.course.startPeriod.compareTo(b.course.startPeriod));
+
+  ScheduleAdjustment? adjustmentOn(DateTime date) =>
+      ScheduleResolver(settings).adjustmentOn(date);
+
+  Future<void> saveAdjustment(
+    ScheduleAdjustment rule, {
+    String? replacingDate,
+    bool suspendSource = false,
+  }) async {
+    final rules = settings.scheduleAdjustments
+        .where((r) => r.date != rule.date && r.date != replacingDate)
+        .toList();
+    if (suspendSource && rule.type == AdjustmentType.makeup) {
+      rules.removeWhere((r) => r.date == rule.sourceDate);
+      rules.add(
+        ScheduleAdjustment(
+          date: rule.sourceDate!,
+          type: AdjustmentType.rest,
+          label: '手动调课停课',
+        ),
+      );
+    }
+    rules.add(rule);
+    rules.sort((a, b) => a.date.compareTo(b.date));
+    await updateSettings(settings.copyWith(scheduleAdjustments: rules));
+  }
+
+  Future<void> removeAdjustment(String date) => updateSettings(
+    settings.copyWith(
+      scheduleAdjustments: settings.scheduleAdjustments
+          .where((r) => r.date != date)
+          .toList(),
+    ),
+  );
 
   Color courseColor(Course c) => Color(c.colorValue);
 
@@ -136,8 +176,10 @@ class AppState extends ChangeNotifier {
   ///
   /// 自动为不同课程分配不同颜色：**同名课程复用同一颜色**，
   /// 新课程取当前使用次数最少的颜色（逐条累加统计，避免整批同色）。
-  Future<void> importCourses(List<ParsedCourse> parsed,
-      {bool replace = false}) async {
+  Future<void> importCourses(
+    List<ParsedCourse> parsed, {
+    bool replace = false,
+  }) async {
     if (replace && db != null) {
       await db!.clearCourses();
       courses.clear();
@@ -170,17 +212,19 @@ class AppState extends ChangeNotifier {
     }
 
     for (final pc in parsed) {
-      await addCourse(Course(
-        name: pc.name,
-        teacher: pc.teacher,
-        location: pc.location,
-        note: pc.note,
-        day: pc.day,
-        startPeriod: pc.startPeriod,
-        endPeriod: pc.endPeriod,
-        weeks: pc.weeks,
-        colorValue: colorFor(pc.name),
-      ));
+      await addCourse(
+        Course(
+          name: pc.name,
+          teacher: pc.teacher,
+          location: pc.location,
+          note: pc.note,
+          day: pc.day,
+          startPeriod: pc.startPeriod,
+          endPeriod: pc.endPeriod,
+          weeks: pc.weeks,
+          colorValue: colorFor(pc.name),
+        ),
+      );
     }
     notifyListeners();
   }
@@ -217,10 +261,10 @@ class AppState extends ChangeNotifier {
   // ---------- 设置 ----------
 
   Future<void> updateSettings(AppSettings s) async {
-    settings = s;
     if (db != null) {
       await db!.saveSettings(s);
     }
+    settings = s;
     notifyListeners();
   }
 
@@ -236,7 +280,9 @@ class AppState extends ChangeNotifier {
     if (!await wallDir.exists()) {
       await wallDir.create(recursive: true);
     }
-    final ext = p.extension(originalName).isEmpty ? '.jpg' : p.extension(originalName);
+    final ext = p.extension(originalName).isEmpty
+        ? '.jpg'
+        : p.extension(originalName);
     final name = 'wp_${DateTime.now().millisecondsSinceEpoch}$ext';
     final file = File(p.join(wallDir.path, name));
     await file.writeAsBytes(bytes);

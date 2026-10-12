@@ -1,15 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/gestures.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:class_manager/models/course.dart';
 import 'package:class_manager/models/periods.dart';
+import 'package:class_manager/models/schedule_adjustment.dart';
+import 'package:class_manager/screens/schedule_adjustment_screen.dart';
+import 'package:class_manager/services/schedule_resolver.dart';
 import 'package:class_manager/screens/course_edit_screen.dart';
 import 'package:class_manager/screens/import_preview_screen.dart';
 import 'package:class_manager/state/app_state.dart';
 import 'package:class_manager/theme/palette.dart';
 import 'package:class_manager/utils/weeks.dart';
 import 'package:class_manager/widgets/glass.dart';
+import 'package:class_manager/widgets/course_info_dialog.dart';
+import 'package:class_manager/widgets/glass_dialog.dart';
 
 /// 主页：第 N 周 + 周一~周日 7 天全周课表（同页显示，参考图）。
 class HomeScreen extends StatelessWidget {
@@ -34,8 +40,11 @@ class HomeScreen extends StatelessWidget {
                   icon: Icons.add_rounded,
                   onTap: () => Navigator.of(context).push(
                     MaterialPageRoute(
-                        builder: (_) =>
-                            CourseEditScreen.course(null, context.read<AppState>())),
+                      builder: (_) => CourseEditScreen.course(
+                        null,
+                        context.read<AppState>(),
+                      ),
+                    ),
                   ),
                 ),
                 const SizedBox(width: 8),
@@ -81,19 +90,47 @@ class _WeekTitle extends StatelessWidget {
           onTap: () => _showWeekPicker(context),
           child: Row(
             children: [
-              Text('第', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
-              Text('$week', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: theme)),
-              Text('周', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+              Text(
+                '第',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
+              Text(
+                '$week',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: theme,
+                ),
+              ),
+              Text(
+                '周',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                ),
+              ),
             ],
           ),
         ),
         const SizedBox(width: 6),
-        Icon(Icons.swap_vert_rounded,
-            size: 16, color: Colors.white.withValues(alpha: 0.45)),
+        Icon(
+          Icons.swap_vert_rounded,
+          size: 16,
+          color: Colors.white.withValues(alpha: 0.45),
+        ),
         const SizedBox(width: 2),
-        Text('上下拖动切换周',
-            style: TextStyle(
-                fontSize: 10.5, color: Colors.white.withValues(alpha: 0.45))),
+        Text(
+          '上下拖动切换周',
+          style: TextStyle(
+            fontSize: 10.5,
+            color: Colors.white.withValues(alpha: 0.45),
+          ),
+        ),
       ],
     );
   }
@@ -115,12 +152,22 @@ void _showWeekPicker(BuildContext context) {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('选择周次', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700)),
+            Text(
+              '选择周次',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
             const SizedBox(height: 12),
             Expanded(
               child: GridView.builder(
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 5, mainAxisSpacing: 8, crossAxisSpacing: 8),
+                  crossAxisCount: 5,
+                  mainAxisSpacing: 8,
+                  crossAxisSpacing: 8,
+                ),
                 itemCount: kMaxWeek,
                 itemBuilder: (_, i) {
                   final w = i + 1;
@@ -133,14 +180,29 @@ void _showWeekPicker(BuildContext context) {
                     },
                     child: Container(
                       decoration: BoxDecoration(
-                        color: sel ? themeColorOf(state.settings) : Colors.white.withValues(alpha: 0.08),
+                        color: sel
+                            ? themeColorOf(state.settings)
+                            : Colors.white.withValues(alpha: 0.08),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          Text('$w', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
-                          Text('${d1.month}/${d1.day}', style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 9)),
+                          Text(
+                            '$w',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          Text(
+                            '${d1.month}/${d1.day}',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.6),
+                              fontSize: 9,
+                            ),
+                          ),
                         ],
                       ),
                     ),
@@ -170,8 +232,7 @@ class _WeekPager extends StatefulWidget {
   State<_WeekPager> createState() => _WeekPagerState();
 }
 
-class _WeekPagerState extends State<_WeekPager>
-    with TickerProviderStateMixin {
+class _WeekPagerState extends State<_WeekPager> with TickerProviderStateMixin {
   /// 拖拽进度：>0 向「下一周」翻，<0 向「上一周」翻，范围 -1..1。
   double _progress = 0;
   late final AnimationController _settle;
@@ -192,40 +253,45 @@ class _WeekPagerState extends State<_WeekPager>
   @override
   void initState() {
     super.initState();
-    _settle = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 280),
-    )
-      ..addListener(() {
-        // 松手后的滑动用 easeOutCubic，收尾丝滑
-        setState(() => _progress = _from +
-            (_to - _from) * Curves.easeOutCubic.transform(_settle.value));
-      })
-      ..addStatusListener((status) {
-        if (status != AnimationStatus.completed) return;
-        if (!_commitOnEnd) return;
-        _commitOnEnd = false;
-        if (!mounted) return;
-        final state = context.read<AppState>();
-        final delta = _progress > 0 ? 1 : -1;
-        final target = state.browseWeek + delta;
-        _lastWeek = target; // 内部提交，避免重复触发外部动画
-        state.setBrowseWeek(target);
-        setState(() => _progress = 0);
-      });
+    _settle =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 280),
+          )
+          ..addListener(() {
+            // 松手后的滑动用 easeOutCubic，收尾丝滑
+            setState(
+              () => _progress =
+                  _from +
+                  (_to - _from) * Curves.easeOutCubic.transform(_settle.value),
+            );
+          })
+          ..addStatusListener((status) {
+            if (status != AnimationStatus.completed) return;
+            if (!_commitOnEnd) return;
+            _commitOnEnd = false;
+            if (!mounted) return;
+            final state = context.read<AppState>();
+            final delta = _progress > 0 ? 1 : -1;
+            final target = state.browseWeek + delta;
+            _lastWeek = target; // 内部提交，避免重复触发外部动画
+            state.setBrowseWeek(target);
+            setState(() => _progress = 0);
+          });
 
-    _external = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 260),
-    )
-      ..addListener(() => setState(() {}))
-      ..addStatusListener((status) {
-        if (status != AnimationStatus.completed) return;
-        setState(() {
-          _extFrom = _extTo;
-          _extDir = 1;
-        });
-      });
+    _external =
+        AnimationController(
+            vsync: this,
+            duration: const Duration(milliseconds: 260),
+          )
+          ..addListener(() => setState(() {}))
+          ..addStatusListener((status) {
+            if (status != AnimationStatus.completed) return;
+            setState(() {
+              _extFrom = _extTo;
+              _extDir = 1;
+            });
+          });
   }
 
   @override
@@ -319,55 +385,58 @@ class _WeekPagerState extends State<_WeekPager>
     final extT = _external.value;
     final extActive = _extFrom != _extTo;
 
-    return LayoutBuilder(builder: (context, cons) {
-      final h = cons.maxHeight;
-      return GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onVerticalDragUpdate: (d) => _onDragUpdate(d, h),
-        onVerticalDragEnd: (d) => _onDragEnd(d, h),
-        child: Stack(
-          children: [
-            Positioned.fill(
-              child: ClipRect(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: extActive
-                      // 外部切换：旧页滑出、新页滑入（同一套丝滑滑动）
-                      ? [
-                          FractionalTranslation(
-                            translation: Offset(0, -_extDir * extT),
-                            child: FullWeekSchedule(week: _extFrom),
-                          ),
-                          FractionalTranslation(
-                            translation: Offset(0, _extDir * (1 - extT)),
-                            child: FullWeekSchedule(week: _extTo),
-                          ),
-                        ]
-                      // 拖动 / 静止
-                      : [
-                          FractionalTranslation(
-                            translation: Offset(0, -dir * p),
-                            child: FullWeekSchedule(week: week),
-                          ),
-                          if (p > 0.0001)
+    return LayoutBuilder(
+      builder: (context, cons) {
+        final h = cons.maxHeight;
+        return GestureDetector(
+          dragStartBehavior: DragStartBehavior.down,
+          behavior: HitTestBehavior.opaque,
+          onVerticalDragUpdate: (d) => _onDragUpdate(d, h),
+          onVerticalDragEnd: (d) => _onDragEnd(d, h),
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: ClipRect(
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: extActive
+                        // 外部切换：旧页滑出、新页滑入（同一套丝滑滑动）
+                        ? [
                             FractionalTranslation(
-                              translation: Offset(0, dir * (1 - p)),
-                              child: FullWeekSchedule(week: neighbor),
+                              translation: Offset(0, -_extDir * extT),
+                              child: FullWeekSchedule(week: _extFrom),
                             ),
-                        ],
+                            FractionalTranslation(
+                              translation: Offset(0, _extDir * (1 - extT)),
+                              child: FullWeekSchedule(week: _extTo),
+                            ),
+                          ]
+                        // 拖动 / 静止
+                        : [
+                            FractionalTranslation(
+                              translation: Offset(0, -dir * p),
+                              child: FullWeekSchedule(week: week),
+                            ),
+                            if (p > 0.0001)
+                              FractionalTranslation(
+                                translation: Offset(0, dir * (1 - p)),
+                                child: FullWeekSchedule(week: neighbor),
+                              ),
+                          ],
+                  ),
                 ),
               ),
-            ),
-            // 回到本周悬浮钮（非本周时显示，点击后逐周滑动返回）
-            if (week != state.currentWeek)
-              Align(
-                alignment: const Alignment(0.92, -0.05),
-                child: _BackToThisWeek(theme: theme, onTap: _backToThisWeek),
-              ),
-          ],
-        ),
-      );
-    });
+              // 回到本周悬浮钮（非本周时显示，点击后逐周滑动返回）
+              if (week != state.currentWeek)
+                Align(
+                  alignment: const Alignment(0.92, -0.05),
+                  child: _BackToThisWeek(theme: theme, onTap: _backToThisWeek),
+                ),
+            ],
+          ),
+        );
+      },
+    );
   }
 }
 
@@ -383,37 +452,31 @@ class FullWeekSchedule extends StatelessWidget {
     final settings = state.settings;
     final theme = themeColorOf(settings);
 
-    final all = state.courses
-        .where((c) => state.courseActiveInWeek(c, week))
-        .toList()
-      ..sort((a, b) => a.startPeriod.compareTo(b.startPeriod));
+    final all = state.occurrencesInWeek(week);
 
     // 同日重叠课程分栏（区间着色）
     final lanes = <int, List<int>>{};
-    final laneOf = <int, int>{};
-    for (final c in all) {
-      final l = lanes.putIfAbsent(c.day, () => []);
+    final laneOf = <CourseOccurrence, int>{};
+    for (final occurrence in all) {
+      final c = occurrence.course;
+      final l = lanes.putIfAbsent(occurrence.date.weekday, () => []);
       var placed = false;
       for (var i = 0; i < l.length; i++) {
         if (l[i] < c.startPeriod) {
           l[i] = c.endPeriod;
-          laneOf[c.id ?? -1] = i;
+          laneOf[occurrence] = i;
           placed = true;
           break;
         }
       }
       if (!placed) {
-        laneOf[c.id ?? -1] = l.length;
+        laneOf[occurrence] = l.length;
         l.add(c.endPeriod);
       }
     }
 
     // 每天的分栏数
     final laneCountOf = <int, int>{};
-    for (final c in all) {
-      final lc = laneCountOf[c.day] ?? 1;
-      laneCountOf[c.day] = lc;
-    }
     for (final e in lanes.entries) {
       laneCountOf[e.key] = e.value.length;
     }
@@ -422,138 +485,159 @@ class FullWeekSchedule extends StatelessWidget {
     final isTodayWeek = weekOf(now, settings.startDate) == week;
     final todayCol = isTodayWeek ? now.weekday : -1;
 
-    return LayoutBuilder(builder: (context, cons) {
-      final width = cons.maxWidth;
-      final colW = (width - _gutterW) / 7;
-      // 行高按可用高度自适应：13 节铺满一屏，底部紧贴导航栏（仅极窄屏才滚动）
-      final slotH =
-          ((cons.maxHeight - _headerH) / kPeriodCount).clamp(16.0, 64.0);
-      final totalH = _headerH + kPeriodCount * slotH;
+    return LayoutBuilder(
+      builder: (context, cons) {
+        final width = cons.maxWidth;
+        final colW = (width - _gutterW) / 7;
+        // 行高按可用高度自适应：13 节铺满一屏，底部紧贴导航栏（仅极窄屏才滚动）
+        final slotH = ((cons.maxHeight - _headerH) / kPeriodCount).clamp(
+          16.0,
+          64.0,
+        );
+        final totalH = _headerH + kPeriodCount * slotH;
 
-      return SingleChildScrollView(
-        // 内容能一屏放下时禁用滚动，把上下拖动让给「翻页切换周次」
-        physics: totalH <= cons.maxHeight + 0.5
-            ? const NeverScrollableScrollPhysics()
-            : const ClampingScrollPhysics(),
-        child: SizedBox(
-          width: width,
-          height: totalH,
-          child: Stack(
-            children: [
-              // ---- 星期表头（周一~周日 + 日期）----
-              Positioned(
-                left: _gutterW,
-                top: 0,
-                right: 0,
-                height: _headerH,
-                child: Row(
-                  children: [
-                    for (var d = 1; d <= 7; d++)
-                      Expanded(
-                        child: _DayHeader(
-                          day: d,
-                          date: state.dateOf(week, d),
-                          isToday: d == todayCol,
-                          theme: theme,
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              // ---- 节次时间轴 + 网格背景 ----
-              for (var i = 0; i < kPeriodCount; i++)
+        return SingleChildScrollView(
+          // 内容能一屏放下时禁用滚动，把上下拖动让给「翻页切换周次」
+          physics: totalH <= cons.maxHeight + 0.5
+              ? const NeverScrollableScrollPhysics()
+              : const ClampingScrollPhysics(),
+          child: SizedBox(
+            width: width,
+            height: totalH,
+            child: Stack(
+              children: [
+                // ---- 星期表头（周一~周日 + 日期）----
                 Positioned(
-                  left: 0,
-                  top: _headerH + i * slotH,
-                  width: width,
-                  height: slotH,
+                  left: _gutterW,
+                  top: 0,
+                  right: 0,
+                  height: _headerH,
                   child: Row(
                     children: [
-                      SizedBox(
-                        width: _gutterW,
-                        child: Center(
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Text('${i + 1}',
-                                    style: TextStyle(
-                                      fontSize: 15.5,
-                                      height: 1.0,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.white.withValues(alpha: 0.95),
-                                    )),
-                                const SizedBox(height: 3),
-                                Text(
-                                  '${kPeriods[i].start}\n${kPeriods[i].end}',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    fontSize: 8.5,
-                                    height: 1.15,
-                                    fontWeight: FontWeight.w500,
-                                    color: Colors.white.withValues(alpha: 0.62),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
                       for (var d = 1; d <= 7; d++)
                         Expanded(
-                          child: settings.showGrid
-                              ? const GridCell()
-                              : const SizedBox.shrink(),
+                          child: _DayHeader(
+                            day: d,
+                            date: state.dateOf(week, d),
+                            isToday: d == todayCol,
+                            theme: theme,
+                          ),
                         ),
                     ],
                   ),
                 ),
-              // ---- 今日列高亮 ----
-              if (todayCol >= 1)
-                Positioned(
-                  left: _gutterW + (todayCol - 1) * colW + 1.2,
-                  top: _headerH,
-                  width: colW - 2.4,
-                  height: kPeriodCount * slotH,
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: theme.withValues(alpha: 0.07),
-                      borderRadius: BorderRadius.circular(10),
+                // ---- 节次时间轴 + 网格背景 ----
+                for (var i = 0; i < kPeriodCount; i++)
+                  Positioned(
+                    left: 0,
+                    top: _headerH + i * slotH,
+                    width: width,
+                    height: slotH,
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: _gutterW,
+                          child: Center(
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                crossAxisAlignment: CrossAxisAlignment.center,
+                                children: [
+                                  Text(
+                                    '${i + 1}',
+                                    style: TextStyle(
+                                      fontSize: 15.5,
+                                      height: 1.0,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.95,
+                                      ),
+                                    ),
+                                  ),
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    '${kPeriods[i].start}\n${kPeriods[i].end}',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      fontSize: 8.5,
+                                      height: 1.15,
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.white.withValues(
+                                        alpha: 0.62,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        for (var d = 1; d <= 7; d++)
+                          Expanded(
+                            child: settings.showGrid
+                                ? const GridCell()
+                                : const SizedBox.shrink(),
+                          ),
+                      ],
                     ),
                   ),
-                ),
-              // ---- 课程卡片 ----
-              for (final c in all)
-                _buildCourseCard(
-                    context, c, colW, slotH, laneOf, laneCountOf, theme),
-            ],
+                // ---- 今日列高亮 ----
+                if (todayCol >= 1)
+                  Positioned(
+                    left: _gutterW + (todayCol - 1) * colW + 1.2,
+                    top: _headerH,
+                    width: colW - 2.4,
+                    height: kPeriodCount * slotH,
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: theme.withValues(alpha: 0.07),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                // ---- 课程卡片 ----
+                for (final c in all)
+                  _buildCourseCard(
+                    context,
+                    c,
+                    colW,
+                    slotH,
+                    laneOf,
+                    laneCountOf,
+                    theme,
+                  ),
+              ],
+            ),
           ),
-        ),
-      );
-    });
+        );
+      },
+    );
   }
 
-  Widget _buildCourseCard(BuildContext context, Course c, double colW,
-      double slotH, Map<int, int> laneOf, Map<int, int> laneCountOf,
-      Color theme) {
-    final lane = laneOf[c.id ?? -1] ?? 0;
-    final laneCount = laneCountOf[c.day] ?? 1;
+  Widget _buildCourseCard(
+    BuildContext context,
+    CourseOccurrence occurrence,
+    double colW,
+    double slotH,
+    Map<CourseOccurrence, int> laneOf,
+    Map<int, int> laneCountOf,
+    Color theme,
+  ) {
+    final c = occurrence.course;
+    final day = occurrence.date.weekday;
+    final lane = laneOf[occurrence] ?? 0;
+    final laneCount = laneCountOf[day] ?? 1;
     final subW = colW / laneCount;
     return Positioned(
-      left: _gutterW + (c.day - 1) * colW + lane * subW + 1.8,
+      left: _gutterW + (day - 1) * colW + lane * subW + 1.8,
       top: _headerH + (c.startPeriod - 1) * slotH + 2,
       width: subW - 3.2,
       height: c.span * slotH - 3.5,
       child: _MiniCourseCard(
         course: c,
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => CourseEditScreen.course(c, context.read<AppState>()),
-          ),
-        ),
+        onTap: () => showCourseInfoDialog(context, occurrence),
         onLongPress: () => showCourseActions(context, c),
       ),
     );
@@ -622,8 +706,11 @@ class _MiniCourseCard extends StatelessWidget {
             Positioned(
               top: 0,
               right: 0,
-              child: Icon(Icons.circle,
-                  size: 5, color: Colors.white.withValues(alpha: 0.9)),
+              child: Icon(
+                Icons.circle,
+                size: 5,
+                color: Colors.white.withValues(alpha: 0.9),
+              ),
             ),
         ],
       ),
@@ -667,39 +754,71 @@ class _DayHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 1.2),
-      decoration: BoxDecoration(
-        color: isToday ? theme.withValues(alpha: 0.32) : Colors.transparent,
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Center(
-        child: FittedBox(
-          fit: BoxFit.scaleDown,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                weekdayName(day),
-                style: TextStyle(
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800,
-                  color: isToday ? Colors.white : Colors.white.withValues(alpha: 0.85),
-                ),
+    final adjustment = context.watch<AppState>().adjustmentOn(date);
+    final status = switch (adjustment?.type) {
+      AdjustmentType.rest => '停课',
+      AdjustmentType.makeup =>
+        '补${weekdayName(parseDate(adjustment!.sourceDate!).weekday)}',
+      AdjustmentType.normal => '原课表',
+      null => '',
+    };
+    return Tooltip(
+      message: adjustment == null
+          ? '设置 ${fmtDate(date)} 的课表安排'
+          : '${adjustment.label} ${adjustment.description}，点击修改',
+      child: GestureDetector(
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (_) => ScheduleAdjustmentScreen(initialDate: date),
+          ),
+        ),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 1.2),
+          decoration: BoxDecoration(
+            color: isToday ? theme.withValues(alpha: 0.32) : Colors.transparent,
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Center(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    weekdayName(day),
+                    style: TextStyle(
+                      fontSize: 12.5,
+                      fontWeight: FontWeight.w800,
+                      color: isToday
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.85),
+                    ),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    fmtDateShort(date),
+                    style: TextStyle(
+                      fontSize: 9.5,
+                      fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
+                      color: isToday
+                          ? Colors.white.withValues(alpha: 0.95)
+                          : Colors.white.withValues(alpha: 0.55),
+                    ),
+                  ),
+                  if (status.isNotEmpty)
+                    Text(
+                      status,
+                      style: TextStyle(
+                        fontSize: 8,
+                        color: adjustment?.type == AdjustmentType.rest
+                            ? const Color(0xFFFFC2A6)
+                            : theme,
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(height: 1),
-              Text(
-                fmtDateShort(date),
-                style: TextStyle(
-                  fontSize: 9.5,
-                  fontWeight: isToday ? FontWeight.w700 : FontWeight.w500,
-                  color: isToday
-                      ? Colors.white.withValues(alpha: 0.95)
-                      : Colors.white.withValues(alpha: 0.55),
-                ),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -726,9 +845,14 @@ class _BackToThisWeek extends StatelessWidget {
         children: [
           Icon(Icons.arrow_back_rounded, size: 13, color: Colors.white),
           const SizedBox(width: 4),
-          Text('回到本周',
-              style: const TextStyle(
-                  color: Colors.white, fontSize: 11.5, fontWeight: FontWeight.w800)),
+          Text(
+            '回到本周',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 11.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
         ],
       ),
     );
@@ -751,19 +875,34 @@ void showCourseActions(BuildContext context, Course c) {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(c.name,
-              style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+          Text(
+            c.name,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 4),
-          Text('${weekdayName(c.day)} · ${periodOf(c.startPeriod).range} ~ ${periodOf(c.endPeriod).range} · ${Weeks.describe(c.weeks)}',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 12)),
+          Text(
+            '${weekdayName(c.day)} · ${periodOf(c.startPeriod).range} ~ ${periodOf(c.endPeriod).range} · ${Weeks.describe(c.weeks)}',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.65),
+              fontSize: 12,
+            ),
+          ),
           const SizedBox(height: 14),
           _ActionRow(
             icon: Icons.edit_rounded,
             label: '编辑课程',
             onTap: () {
               Navigator.of(context).pop();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => CourseEditScreen.course(c, context.read<AppState>())));
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      CourseEditScreen.course(c, context.read<AppState>()),
+                ),
+              );
             },
           ),
           _ActionRow(
@@ -784,7 +923,10 @@ void showCourseActions(BuildContext context, Course c) {
               await state.deleteCourse(c);
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('已删除课程'), duration: Duration(seconds: 1)),
+                  const SnackBar(
+                    content: Text('已删除课程'),
+                    duration: Duration(seconds: 1),
+                  ),
                 );
               }
             },
@@ -812,8 +954,14 @@ Future<void> showColorPickModal(BuildContext context, Course c) {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('课程卡片颜色',
-                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+            const Text(
+              '课程卡片颜色',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
             const SizedBox(height: 16),
             Wrap(
               spacing: 12,
@@ -830,10 +978,16 @@ Future<void> showColorPickModal(BuildContext context, Course c) {
                         shape: BoxShape.circle,
                         border: selected == color
                             ? Border.all(color: Colors.white, width: 2.5)
-                            : Border.all(color: Colors.white.withValues(alpha: 0.25)),
+                            : Border.all(
+                                color: Colors.white.withValues(alpha: 0.25),
+                              ),
                       ),
                       child: selected == color
-                          ? const Icon(Icons.check_rounded, color: Colors.white, size: 20)
+                          ? const Icon(
+                              Icons.check_rounded,
+                              color: Colors.white,
+                              size: 20,
+                            )
                           : null,
                     ),
                   ),
@@ -853,8 +1007,14 @@ Future<void> showColorPickModal(BuildContext context, Course c) {
                   if (ctx.mounted) Navigator.of(ctx).pop();
                 },
                 child: const Center(
-                  child: Text('确定',
-                      style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w800)),
+                  child: Text(
+                    '确定',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -870,7 +1030,12 @@ class _ActionRow extends StatelessWidget {
   final String label;
   final bool danger;
   final VoidCallback onTap;
-  const _ActionRow({required this.icon, required this.label, this.danger = false, required this.onTap});
+  const _ActionRow({
+    required this.icon,
+    required this.label,
+    this.danger = false,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -884,9 +1049,16 @@ class _ActionRow extends StatelessWidget {
           children: [
             Icon(icon, size: 20, color: color.withValues(alpha: 0.9)),
             const SizedBox(width: 12),
-            Text(label,
+            Expanded(
+              child: Text(
+                label,
                 style: TextStyle(
-                    color: color, fontSize: 14.5, fontWeight: FontWeight.w600)),
+                  color: color,
+                  fontSize: 14.5,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -901,12 +1073,20 @@ void _showShareSheet(BuildContext context) {
   final week = state.browseWeek;
   final sb = StringBuffer()..writeln('【第$week 周课表】');
   for (var d = 1; d <= 7; d++) {
-    final list = state.coursesOn(d, week);
-    if (list.isEmpty) continue;
-    sb.writeln('${weekdayName(d)} ${fmtDateShort(state.dateOf(week, d))}：');
-    for (final c in list) {
-      sb.writeln('  ${periodOf(c.startPeriod).range}~${periodOf(c.endPeriod).range} ${c.name}'
-          '${c.location.isNotEmpty ? " @${c.location}" : ""}（${Weeks.describe(c.weeks)}）');
+    final date = state.dateOf(week, d);
+    final list = state.occurrencesOn(date);
+    final adjustment = state.adjustmentOn(date);
+    if (list.isEmpty && adjustment == null) continue;
+    sb.writeln(
+      '${weekdayName(d)} ${fmtDateShort(date)}'
+      '${adjustment == null ? '' : '（${adjustment.description}）'}：',
+    );
+    for (final occurrence in list) {
+      final c = occurrence.course;
+      sb.writeln(
+        '  ${periodOf(c.startPeriod).range}~${periodOf(c.endPeriod).range} ${c.name}'
+        '${c.location.isNotEmpty ? " @${c.location}" : ""}（${Weeks.describe(c.weeks)}）',
+      );
     }
   }
   final text = sb.toString();
@@ -922,8 +1102,14 @@ void _showShareSheet(BuildContext context) {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('分享本周课表',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w800)),
+          const Text(
+            '分享本周课表',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 10),
           Container(
             height: 150,
@@ -934,8 +1120,14 @@ void _showShareSheet(BuildContext context) {
               borderRadius: BorderRadius.circular(12),
             ),
             child: SingleChildScrollView(
-              child: Text(text,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11.5, height: 1.5)),
+              child: Text(
+                text,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.8),
+                  fontSize: 11.5,
+                  height: 1.5,
+                ),
+              ),
             ),
           ),
           const SizedBox(height: 14),
@@ -952,13 +1144,22 @@ void _showShareSheet(BuildContext context) {
                 if (context.mounted) {
                   Navigator.of(context).pop();
                   ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('已复制到剪贴板'), duration: Duration(seconds: 1)),
+                    const SnackBar(
+                      content: Text('已复制到剪贴板'),
+                      duration: Duration(seconds: 1),
+                    ),
                   );
                 }
               },
               child: const Center(
-                child: Text('复制到剪贴板',
-                    style: TextStyle(color: Colors.white, fontSize: 14.5, fontWeight: FontWeight.w800)),
+                child: Text(
+                  '复制到剪贴板',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ),
             ),
           ),
@@ -995,8 +1196,12 @@ void _showMenuSheet(BuildContext context) {
             label: '添加课程',
             onTap: () {
               Navigator.of(context).pop();
-              Navigator.of(context).push(MaterialPageRoute(
-                  builder: (_) => CourseEditScreen.course(null, context.read<AppState>())));
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) =>
+                      CourseEditScreen.course(null, context.read<AppState>()),
+                ),
+              );
             },
           ),
           _ActionRow(
@@ -1005,6 +1210,18 @@ void _showMenuSheet(BuildContext context) {
             onTap: () {
               Navigator.of(context).pop();
               pickStartDate(context);
+            },
+          ),
+          _ActionRow(
+            icon: Icons.event_repeat_rounded,
+            label: '节假日与调休',
+            onTap: () {
+              Navigator.of(context).pop();
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const ScheduleAdjustmentScreen(),
+                ),
+              );
             },
           ),
         ],
@@ -1017,18 +1234,11 @@ void _showMenuSheet(BuildContext context) {
 Future<void> pickStartDate(BuildContext context) async {
   final state = context.read<AppState>();
   final initial = parseDate(state.settings.startDate);
-  final picked = await showDatePicker(
+  final picked = await showGlassDatePicker(
     context: context,
     initialDate: initial,
     firstDate: DateTime(2020),
-    lastDate: DateTime(2030),
-    builder: (ctx, child) => Theme(
-      data: ThemeData.dark().copyWith(
-        colorScheme: ColorScheme.fromSeed(
-            seedColor: themeColorOf(state.settings), brightness: Brightness.dark),
-      ),
-      child: child!,
-    ),
+    lastDate: DateTime(2035, 12, 31),
   );
   if (picked != null) {
     await state.setStartDate(fmtDate(picked));

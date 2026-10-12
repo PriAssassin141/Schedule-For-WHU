@@ -48,3 +48,6 @@ app.*.map.json
 android/build/
 android/.gradle/
 
+# 所有交付文件和打包缓存都保留在本工程内。
+artifacts/
+.packaging/

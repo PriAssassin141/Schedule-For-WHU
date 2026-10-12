@@ -7,6 +7,7 @@ import 'package:class_manager/theme/palette.dart';
 import 'package:class_manager/utils/weeks.dart';
 import 'package:class_manager/widgets/app_background.dart';
 import 'package:class_manager/widgets/glass.dart';
+import 'package:class_manager/widgets/glass_dialog.dart';
 
 /// 课程编辑页：新增/编辑课程（含周数多选、节次范围、颜色自定义）。
 class CourseEditScreen extends StatefulWidget {
@@ -14,7 +15,8 @@ class CourseEditScreen extends StatefulWidget {
   final Course? course;
   final AppState state;
 
-  CourseEditScreen.course(this.course, this.state) : super(key: ValueKey(course?.id ?? 'new'));
+  CourseEditScreen.course(this.course, this.state)
+    : super(key: ValueKey(course?.id ?? 'new'));
 
   @override
   State<CourseEditScreen> createState() => _CourseEditScreenState();
@@ -73,29 +75,33 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
     }
     final weeks = Weeks.compress(_weeks.toList());
     if (_isNew) {
-      await widget.state.addCourse(Course(
-        name: name,
-        teacher: _teacherCtl.text.trim(),
-        location: _locationCtl.text.trim(),
-        note: _noteCtl.text.trim(),
-        day: _day,
-        startPeriod: start,
-        endPeriod: end,
-        weeks: weeks,
-        colorValue: _colorValue,
-      ));
+      await widget.state.addCourse(
+        Course(
+          name: name,
+          teacher: _teacherCtl.text.trim(),
+          location: _locationCtl.text.trim(),
+          note: _noteCtl.text.trim(),
+          day: _day,
+          startPeriod: start,
+          endPeriod: end,
+          weeks: weeks,
+          colorValue: _colorValue,
+        ),
+      );
     } else {
-      await widget.state.updateCourse(widget.course!.copyWith(
-        name: name,
-        teacher: _teacherCtl.text.trim(),
-        location: _locationCtl.text.trim(),
-        note: _noteCtl.text.trim(),
-        day: _day,
-        startPeriod: start,
-        endPeriod: end,
-        weeks: weeks,
-        colorValue: _colorValue,
-      ));
+      await widget.state.updateCourse(
+        widget.course!.copyWith(
+          name: name,
+          teacher: _teacherCtl.text.trim(),
+          location: _locationCtl.text.trim(),
+          note: _noteCtl.text.trim(),
+          day: _day,
+          startPeriod: start,
+          endPeriod: end,
+          weeks: weeks,
+          colorValue: _colorValue,
+        ),
+      );
     }
     if (mounted) Navigator.of(context).pop();
   }
@@ -105,19 +111,22 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
     if (c == null) return;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF14302E),
+      builder: (ctx) => GlassDialog(
         title: const Text('删除课程', style: TextStyle(color: Colors.white)),
-        content: Text('确定删除「${c.name}」吗？',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.8))),
+        content: Text(
+          '确定删除「${c.name}」吗？',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+        ),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('取消', style: TextStyle(color: Colors.white70))),
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('删除',
-                  style: TextStyle(color: Color(0xFFFF6B6B)))),
+          GlassDialogButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            label: '取消',
+          ),
+          GlassDialogButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            label: '删除',
+            danger: true,
+          ),
         ],
       ),
     );
@@ -128,8 +137,9 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
   }
 
   void _toast(String msg) {
-    ScaffoldMessenger.of(context)
-        .showSnackBar(SnackBar(content: Text(msg), duration: const Duration(seconds: 1)));
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), duration: const Duration(seconds: 1)),
+    );
   }
 
   @override
@@ -147,11 +157,14 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
                   onTap: () => Navigator.of(context).pop(),
                 ),
                 const SizedBox(width: 12),
-                Text(_isNew ? '添加课程' : '编辑课程',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800)),
+                Text(
+                  _isNew ? '添加课程' : '编辑课程',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const Spacer(),
                 LiquidGlass(
                   radius: BorderRadius.circular(18),
@@ -161,11 +174,14 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
                   onTap: _save,
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                    child: Text('保存',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800)),
+                    child: Text(
+                      '保存',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -205,11 +221,14 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
                       child: const Padding(
                         padding: EdgeInsets.symmetric(vertical: 12),
                         child: Center(
-                          child: Text('删除课程',
-                              style: TextStyle(
-                                  color: Color(0xFFFF9A9A),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700)),
+                          child: Text(
+                            '删除课程',
+                            style: TextStyle(
+                              color: Color(0xFFFF9A9A),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -223,8 +242,12 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
     );
   }
 
-  Widget _field(String label, TextEditingController ctl,
-      {String? hint, int maxLines = 1}) {
+  Widget _field(
+    String label,
+    TextEditingController ctl, {
+    String? hint,
+    int maxLines = 1,
+  }) {
     return LiquidGlass(
       radius: BorderRadius.circular(14),
       tintAlphaOverride: 0.14,
@@ -236,9 +259,15 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
         cursorColor: Colors.white,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 13),
+          labelStyle: TextStyle(
+            color: Colors.white.withValues(alpha: 0.65),
+            fontSize: 13,
+          ),
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 12),
+          hintStyle: TextStyle(
+            color: Colors.white.withValues(alpha: 0.35),
+            fontSize: 12,
+          ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),
@@ -259,16 +288,20 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
                 duration: const Duration(milliseconds: 180),
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: _day == d ? theme : Colors.white.withValues(alpha: 0.08),
+                  color: _day == d
+                      ? theme
+                      : Colors.white.withValues(alpha: 0.08),
                   borderRadius: BorderRadius.circular(10),
                 ),
-                child: Text(weekdayName(d).substring(1),
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 12.5,
-                      fontWeight: _day == d ? FontWeight.w800 : FontWeight.w600,
-                      color: _day == d ? Colors.white : Colors.white70,
-                    )),
+                child: Text(
+                  weekdayName(d).substring(1),
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 12.5,
+                    fontWeight: _day == d ? FontWeight.w800 : FontWeight.w600,
+                    color: _day == d ? Colors.white : Colors.white70,
+                  ),
+                ),
               ),
             ),
           ),
@@ -287,55 +320,51 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
         Row(
           children: [
             Expanded(
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<int>(
-                  value: _startPeriod,
-                  dropdownColor: const Color(0xFF16322F),
-                  borderRadius: BorderRadius.circular(12),
-                  iconEnabledColor: Colors.white70,
-                  style: const TextStyle(color: Colors.white, fontSize: 13.5),
-                  items: [
-                    for (var i = 1; i <= kPeriodCount; i++)
-                      DropdownMenuItem(
-                          value: i,
-                          child: Text('第${numberToChinese(i)}节  ${periodOf(i).start}')),
-                  ],
-                  onChanged: (v) => setState(() {
-                    _startPeriod = v ?? 1;
-                    if (_startPeriod > _endPeriod) _endPeriod = _startPeriod + 1 > kPeriodCount ? _startPeriod : _startPeriod + 1;
-                  }),
-                ),
+              child: GlassSelect<int>(
+                title: '开始节次',
+                value: _startPeriod,
+                options: {
+                  for (var i = 1; i <= kPeriodCount; i++)
+                    i: '第${numberToChinese(i)}节 ${periodOf(i).start}',
+                },
+                onChanged: (v) => setState(() {
+                  _startPeriod = v;
+                  if (_startPeriod > _endPeriod) {
+                    _endPeriod = _startPeriod + 1 > kPeriodCount
+                        ? _startPeriod
+                        : _startPeriod + 1;
+                  }
+                }),
               ),
             ),
             const SizedBox(width: 12),
             Container(
-              width: 1, height: 26,
+              width: 1,
+              height: 26,
               color: Colors.white.withValues(alpha: 0.15),
             ),
             const SizedBox(width: 12),
             Expanded(
-              child: DropdownButtonHideUnderline(
-                child: DropdownButton<int>(
-                  value: _endPeriod,
-                  dropdownColor: const Color(0xFF16322F),
-                  borderRadius: BorderRadius.circular(12),
-                  iconEnabledColor: Colors.white70,
-                  style: const TextStyle(color: Colors.white, fontSize: 13.5),
-                  items: [
-                    for (var i = 1; i <= kPeriodCount; i++)
-                      DropdownMenuItem(
-                          value: i,
-                          child: Text('第${numberToChinese(i)}节  ${periodOf(i).start}')),
-                  ],
-                  onChanged: (v) => setState(() => _endPeriod = v ?? 1),
-                ),
+              child: GlassSelect<int>(
+                title: '结束节次',
+                value: _endPeriod,
+                options: {
+                  for (var i = 1; i <= kPeriodCount; i++)
+                    i: '第${numberToChinese(i)}节 ${periodOf(i).start}',
+                },
+                onChanged: (v) => setState(() => _endPeriod = v),
               ),
             ),
           ],
         ),
         const SizedBox(height: 8),
-        Text('第${numberToChinese(_startPeriod)}节 ${startP.range} ~ 第${numberToChinese(_endPeriod)}节 ${endP.range}',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 11.5)),
+        Text(
+          '第${numberToChinese(_startPeriod)}节 ${startP.range} ~ 第${numberToChinese(_endPeriod)}节 ${endP.range}',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.55),
+            fontSize: 11.5,
+          ),
+        ),
       ],
     );
   }
@@ -346,10 +375,12 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
     // 单周 / 双周选中判断（22 周时两者数量相同，需按奇偶区分）
     final oddWeeks = {for (var w = 1; w <= kMaxWeek; w += 2) w};
     final evenWeeks = {for (var w = 2; w <= kMaxWeek; w += 2) w};
-    final isOdd = _weeks.isNotEmpty &&
+    final isOdd =
+        _weeks.isNotEmpty &&
         _weeks.length == oddWeeks.length &&
         _weeks.every(oddWeeks.contains);
-    final isEven = _weeks.isNotEmpty &&
+    final isEven =
+        _weeks.isNotEmpty &&
         _weeks.length == evenWeeks.length &&
         _weeks.every(evenWeeks.contains);
     return Column(
@@ -357,20 +388,52 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
       children: [
         Row(
           children: [
-            _quickChip('全部', all, () => setState(() => _weeks = {...List.generate(kMaxWeek, (i) => i + 1)}), theme),
+            _quickChip(
+              '全部',
+              all,
+              () => setState(
+                () => _weeks = {...List.generate(kMaxWeek, (i) => i + 1)},
+              ),
+              theme,
+            ),
             const SizedBox(width: 6),
-            _quickChip('单周', isOdd, () => setState(() => _weeks = {...oddWeeks}), theme),
+            _quickChip(
+              '单周',
+              isOdd,
+              () => setState(() => _weeks = {...oddWeeks}),
+              theme,
+            ),
             const SizedBox(width: 6),
-            _quickChip('双周', isEven, () => setState(() => _weeks = {...evenWeeks}), theme),
+            _quickChip(
+              '双周',
+              isEven,
+              () => setState(() => _weeks = {...evenWeeks}),
+              theme,
+            ),
             const SizedBox(width: 6),
-            _quickChip('1-16周', _weeks.length == 16 && _weeks.contains(1) && _weeks.contains(16), () => setState(() => _weeks = {for (var w = 1; w <= 16; w++) w}), theme),
+            _quickChip(
+              '1-16周',
+              _weeks.length == 16 && _weeks.contains(1) && _weeks.contains(16),
+              () => setState(() => _weeks = {for (var w = 1; w <= 16; w++) w}),
+              theme,
+            ),
             const SizedBox(width: 6),
-            _quickChip('清空', _weeks.isEmpty, () => setState(() => _weeks = {}), theme),
+            _quickChip(
+              '清空',
+              _weeks.isEmpty,
+              () => setState(() => _weeks = {}),
+              theme,
+            ),
           ],
         ),
         const SizedBox(height: 10),
-        Text('可选择任意周数组合，如 1、3、6 周上课',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
+        Text(
+          '可选择任意周数组合，如 1、3、6 周上课',
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.5),
+            fontSize: 11,
+          ),
+        ),
         const SizedBox(height: 8),
         Wrap(
           spacing: 7,
@@ -396,12 +459,18 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
                     borderRadius: BorderRadius.circular(9),
                   ),
                   child: Center(
-                    child: Text('$w',
-                        style: TextStyle(
-                          fontSize: 12.5,
-                          fontWeight: _weeks.contains(w) ? FontWeight.w800 : FontWeight.w600,
-                          color: _weeks.contains(w) ? Colors.white : Colors.white70,
-                        )),
+                    child: Text(
+                      '$w',
+                      style: TextStyle(
+                        fontSize: 12.5,
+                        fontWeight: _weeks.contains(w)
+                            ? FontWeight.w800
+                            : FontWeight.w600,
+                        color: _weeks.contains(w)
+                            ? Colors.white
+                            : Colors.white70,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -411,21 +480,30 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
     );
   }
 
-  Widget _quickChip(String label, bool selected, VoidCallback onTap, Color theme) {
+  Widget _quickChip(
+    String label,
+    bool selected,
+    VoidCallback onTap,
+    Color theme,
+  ) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
         decoration: BoxDecoration(
-          color: selected ? theme.withValues(alpha: 0.55) : Colors.white.withValues(alpha: 0.08),
+          color: selected
+              ? theme.withValues(alpha: 0.55)
+              : Colors.white.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(8),
         ),
-        child: Text(label,
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-              color: Colors.white.withValues(alpha: selected ? 1 : 0.7),
-            )),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+            color: Colors.white.withValues(alpha: selected ? 1 : 0.7),
+          ),
+        ),
       ),
     );
   }
@@ -450,7 +528,11 @@ class _CourseEditScreenState extends State<CourseEditScreen> {
                     : Border.all(color: Colors.white.withValues(alpha: 0.25)),
               ),
               child: _colorValue == color
-                  ? const Icon(Icons.check_rounded, color: Colors.white, size: 19)
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 19,
+                    )
                   : null,
             ),
           ),
@@ -473,11 +555,14 @@ class _Card extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title,
-              style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
-                  fontSize: 12.5,
-                  fontWeight: FontWeight.w800)),
+          Text(
+            title,
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.7),
+              fontSize: 12.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(height: 12),
           child,
         ],

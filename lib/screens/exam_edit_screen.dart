@@ -6,13 +6,15 @@ import 'package:class_manager/theme/palette.dart';
 import 'package:class_manager/utils/weeks.dart';
 import 'package:class_manager/widgets/app_background.dart';
 import 'package:class_manager/widgets/glass.dart';
+import 'package:class_manager/widgets/glass_dialog.dart';
 
 /// 考试编辑页：新增/编辑考试（名称、地点、日期、时间段、备注）。
 class ExamEditScreen extends StatefulWidget {
   final Exam? exam;
   final AppState state;
 
-  ExamEditScreen.exam(this.exam, this.state) : super(key: ValueKey(exam?.id ?? 'new'));
+  ExamEditScreen.exam(this.exam, this.state)
+    : super(key: ValueKey(exam?.id ?? 'new'));
 
   @override
   State<ExamEditScreen> createState() => _ExamEditScreenState();
@@ -51,42 +53,30 @@ class _ExamEditScreenState extends State<ExamEditScreen> {
   }
 
   Future<void> _pickDate() async {
-    final theme = themeColorOf(widget.state.settings);
-    final picked = await showDatePicker(
+    final picked = await showGlassDatePicker(
       context: context,
       initialDate: _date,
       firstDate: DateTime(2020),
-      lastDate: DateTime(2035),
-      builder: (ctx, child) => Theme(
-        data: ThemeData.dark().copyWith(
-            colorScheme: ColorScheme.fromSeed(
-                seedColor: theme, brightness: Brightness.dark)),
-        child: child!,
-      ),
+      lastDate: DateTime(2035, 12, 31),
     );
     if (picked != null) setState(() => _date = picked);
   }
 
   Future<void> _pickTime({required bool isStart}) async {
-    final theme = themeColorOf(widget.state.settings);
     final current = isStart ? _startTime : _endTime;
     final init = current.isNotEmpty
         ? TimeOfDay(
             hour: int.parse(current.split(':')[0]),
-            minute: int.parse(current.split(':')[1]))
+            minute: int.parse(current.split(':')[1]),
+          )
         : const TimeOfDay(hour: 14, minute: 0);
-    final picked = await showTimePicker(
+    final picked = await showGlassTimePicker(
       context: context,
       initialTime: init,
-      builder: (ctx, child) => Theme(
-        data: ThemeData.dark().copyWith(
-            colorScheme: ColorScheme.fromSeed(
-                seedColor: theme, brightness: Brightness.dark)),
-        child: child!,
-      ),
     );
     if (picked != null) {
-      final s = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+      final s =
+          '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
       setState(() {
         if (isStart) {
           _startTime = s;
@@ -101,7 +91,11 @@ class _ExamEditScreenState extends State<ExamEditScreen> {
     final name = _nameCtl.text.trim();
     if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('请填写考试名称'), duration: Duration(seconds: 1)));
+        const SnackBar(
+          content: Text('请填写考试名称'),
+          duration: Duration(seconds: 1),
+        ),
+      );
       return;
     }
     final e = Exam(
@@ -126,18 +120,22 @@ class _ExamEditScreenState extends State<ExamEditScreen> {
     if (e == null) return;
     final ok = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF14302E),
+      builder: (ctx) => GlassDialog(
         title: const Text('删除考试', style: TextStyle(color: Colors.white)),
-        content: Text('确定删除「${e.name}」吗？',
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.8))),
+        content: Text(
+          '确定删除「${e.name}」吗？',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.8)),
+        ),
         actions: [
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text('取消', style: TextStyle(color: Colors.white70))),
-          TextButton(
-              onPressed: () => Navigator.of(ctx).pop(true),
-              child: const Text('删除', style: TextStyle(color: Color(0xFFFF6B6B)))),
+          GlassDialogButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            label: '取消',
+          ),
+          GlassDialogButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            label: '删除',
+            danger: true,
+          ),
         ],
       ),
     );
@@ -162,11 +160,14 @@ class _ExamEditScreenState extends State<ExamEditScreen> {
                   onTap: () => Navigator.of(context).pop(),
                 ),
                 const SizedBox(width: 12),
-                Text(_isNew ? '添加考试' : '编辑考试',
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 18,
-                        fontWeight: FontWeight.w800)),
+                Text(
+                  _isNew ? '添加考试' : '编辑考试',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 18,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
                 const Spacer(),
                 LiquidGlass(
                   radius: BorderRadius.circular(18),
@@ -176,11 +177,14 @@ class _ExamEditScreenState extends State<ExamEditScreen> {
                   onTap: _save,
                   child: const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                    child: Text('保存',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 13.5,
-                            fontWeight: FontWeight.w800)),
+                    child: Text(
+                      '保存',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -198,25 +202,41 @@ class _ExamEditScreenState extends State<ExamEditScreen> {
                   LiquidGlass(
                     radius: BorderRadius.circular(14),
                     tintAlphaOverride: 0.14,
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
                     onTap: _pickDate,
                     child: Row(
                       children: [
-                        Icon(Icons.event_rounded, size: 19,
-                            color: theme.withValues(alpha: 0.9)),
+                        Icon(
+                          Icons.event_rounded,
+                          size: 19,
+                          color: theme.withValues(alpha: 0.9),
+                        ),
                         const SizedBox(width: 12),
-                        const Text('考试日期',
-                            style:
-                                TextStyle(color: Colors.white70, fontSize: 13.5)),
+                        const Text(
+                          '考试日期',
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 13.5,
+                          ),
+                        ),
                         const Spacer(),
-                        Text(fmtDate(_date),
-                            style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w800)),
+                        Text(
+                          fmtDate(_date),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                         const SizedBox(width: 4),
-                        Icon(Icons.chevron_right_rounded,
-                            color: Colors.white.withValues(alpha: 0.5), size: 18),
+                        Icon(
+                          Icons.chevron_right_rounded,
+                          color: Colors.white.withValues(alpha: 0.5),
+                          size: 18,
+                        ),
                       ],
                     ),
                   ),
@@ -229,20 +249,28 @@ class _ExamEditScreenState extends State<ExamEditScreen> {
                           radius: BorderRadius.circular(14),
                           tintAlphaOverride: 0.14,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 14),
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
                           onTap: () => _pickTime(isStart: true),
                           child: Column(
                             children: [
-                              Text('开始时间',
-                                  style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.6),
-                                      fontSize: 11)),
+                              Text(
+                                '开始时间',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  fontSize: 11,
+                                ),
+                              ),
                               const SizedBox(height: 4),
-                              Text(_startTime.isEmpty ? '未设置' : _startTime,
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800)),
+                              Text(
+                                _startTime.isEmpty ? '未设置' : _startTime,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -253,20 +281,28 @@ class _ExamEditScreenState extends State<ExamEditScreen> {
                           radius: BorderRadius.circular(14),
                           tintAlphaOverride: 0.14,
                           padding: const EdgeInsets.symmetric(
-                              horizontal: 14, vertical: 14),
+                            horizontal: 14,
+                            vertical: 14,
+                          ),
                           onTap: () => _pickTime(isStart: false),
                           child: Column(
                             children: [
-                              Text('结束时间',
-                                  style: TextStyle(
-                                      color: Colors.white.withValues(alpha: 0.6),
-                                      fontSize: 11)),
+                              Text(
+                                '结束时间',
+                                style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.6),
+                                  fontSize: 11,
+                                ),
+                              ),
                               const SizedBox(height: 4),
-                              Text(_endTime.isEmpty ? '未设置' : _endTime,
-                                  style: const TextStyle(
-                                      color: Colors.white,
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800)),
+                              Text(
+                                _endTime.isEmpty ? '未设置' : _endTime,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w800,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -286,11 +322,14 @@ class _ExamEditScreenState extends State<ExamEditScreen> {
                       child: const Padding(
                         padding: EdgeInsets.symmetric(vertical: 12),
                         child: Center(
-                          child: Text('删除考试',
-                              style: TextStyle(
-                                  color: Color(0xFFFF9A9A),
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700)),
+                          child: Text(
+                            '删除考试',
+                            style: TextStyle(
+                              color: Color(0xFFFF9A9A),
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
                         ),
                       ),
                     ),
@@ -304,8 +343,12 @@ class _ExamEditScreenState extends State<ExamEditScreen> {
     );
   }
 
-  Widget _field(String label, TextEditingController ctl,
-      {String? hint, int maxLines = 1}) {
+  Widget _field(
+    String label,
+    TextEditingController ctl, {
+    String? hint,
+    int maxLines = 1,
+  }) {
     return LiquidGlass(
       radius: BorderRadius.circular(14),
       tintAlphaOverride: 0.14,
@@ -317,9 +360,15 @@ class _ExamEditScreenState extends State<ExamEditScreen> {
         cursorColor: Colors.white,
         decoration: InputDecoration(
           labelText: label,
-          labelStyle: TextStyle(color: Colors.white.withValues(alpha: 0.65), fontSize: 13),
+          labelStyle: TextStyle(
+            color: Colors.white.withValues(alpha: 0.65),
+            fontSize: 13,
+          ),
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 12),
+          hintStyle: TextStyle(
+            color: Colors.white.withValues(alpha: 0.35),
+            fontSize: 12,
+          ),
           border: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),

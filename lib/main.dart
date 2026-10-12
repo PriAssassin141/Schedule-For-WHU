@@ -27,35 +27,36 @@ class ClassManagerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = themeColorOf(state.settings);
     return ChangeNotifierProvider.value(
       value: state,
-      child: MaterialApp(
-        title: '表里珞珈',
-        debugShowCheckedModeBanner: false,
-        // 中文界面（日期/时间选择器等系统组件）
-        locale: const Locale('zh', 'CN'),
-        supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
-        localizationsDelegates: const [
-          GlobalMaterialLocalizations.delegate,
-          GlobalWidgetsLocalizations.delegate,
-          GlobalCupertinoLocalizations.delegate,
-        ],
-        theme: ThemeData(
-          useMaterial3: true,
-          brightness: Brightness.dark,
-          colorScheme: ColorScheme.fromSeed(
-            seedColor: theme,
+      child: Consumer<AppState>(
+        builder: (context, state, _) => MaterialApp(
+          title: '表里珞珈',
+          debugShowCheckedModeBanner: false,
+          // 中文界面（日期/时间选择器等系统组件）
+          locale: const Locale('zh', 'CN'),
+          supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
+          localizationsDelegates: const [
+            GlobalMaterialLocalizations.delegate,
+            GlobalWidgetsLocalizations.delegate,
+            GlobalCupertinoLocalizations.delegate,
+          ],
+          theme: ThemeData(
+            useMaterial3: true,
             brightness: Brightness.dark,
+            colorScheme: ColorScheme.fromSeed(
+              seedColor: themeColorOf(state.settings),
+              brightness: Brightness.dark,
+            ),
+            scaffoldBackgroundColor: Colors.transparent,
+            fontFamilyFallback: const ['Microsoft YaHei', 'PingFang SC'],
+            textTheme: const TextTheme().apply(
+              bodyColor: Colors.white,
+              displayColor: Colors.white,
+            ),
           ),
-          scaffoldBackgroundColor: Colors.transparent,
-          fontFamilyFallback: const ['Microsoft YaHei', 'PingFang SC'],
-          textTheme: const TextTheme().apply(
-            bodyColor: Colors.white,
-            displayColor: Colors.white,
-          ),
+          home: const RootShell(),
         ),
-        home: const RootShell(),
       ),
     );
   }

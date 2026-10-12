@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:class_manager/main.dart';
 import 'package:class_manager/screens/home_screen.dart';
 import 'package:class_manager/state/app_state.dart';
+import 'package:class_manager/utils/weeks.dart';
 
 /// 主页周次切换：上下拖动翻页（向上拖动 → 下一周，向下拖动 → 上一周），
 /// 翻页时当前页与相邻页同时整页滑动。
@@ -22,12 +23,16 @@ void main() {
     expect(find.text('5'), findsWidgets);
 
     // 拖动过程中：新旧两页同时渲染（整页滑动，无淡出）
-    final gesture =
-        await tester.startGesture(tester.getCenter(find.text('周一')));
+    final gesture = await tester.startGesture(
+      tester.getCenter(find.text('周一')),
+    );
     await gesture.moveBy(const Offset(0, -60));
     await tester.pump();
-    expect(find.byType(FullWeekSchedule), findsNWidgets(2),
-        reason: '翻页过程中应同时渲染当前页与相邻页');
+    expect(
+      find.byType(FullWeekSchedule),
+      findsNWidgets(2),
+      reason: '翻页过程中应同时渲染当前页与相邻页',
+    );
     await gesture.up();
     await tester.pumpAndSettle();
     expect(state.browseWeek, 5, reason: '小幅拖动应回弹，不切周');
@@ -56,7 +61,10 @@ void main() {
     addTearDown(tester.view.reset);
 
     final state = AppState.memory();
-    state.browseWeek = 6; // 当前周为第 1 周（默认开学日期）
+    state.settings = state.settings.copyWith(
+      startDate: fmtDate(DateTime.now()),
+    );
+    state.browseWeek = 6; // 将当前日期设为开学周，不依赖测试执行日期。
 
     await tester.pumpWidget(ClassManagerApp(state: state));
     await tester.pump();
