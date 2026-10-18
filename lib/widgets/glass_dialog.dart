@@ -36,7 +36,10 @@ class GlassDialog extends StatelessWidget {
       ),
       child: LiquidGlass(
         radius: BorderRadius.circular(24),
-        tintAlphaOverride: 0.34,
+        // Keep background detail from competing with modal text, while the
+        // existing blur/refraction and translucent surface remain visible.
+        backgroundColor: const Color(0xCC121A22),
+        tintAlphaOverride: 0.22,
         padding: const EdgeInsets.all(22),
         child:
             child ??
@@ -76,6 +79,7 @@ class GlassDialogButton extends StatelessWidget {
   final VoidCallback onPressed;
   final bool primary;
   final bool danger;
+  final bool expanded;
   final Color? color;
   final IconData? icon;
 
@@ -85,6 +89,7 @@ class GlassDialogButton extends StatelessWidget {
     required this.onPressed,
     this.primary = false,
     this.danger = false,
+    this.expanded = false,
     this.color,
     this.icon,
   });
@@ -94,29 +99,35 @@ class GlassDialogButton extends StatelessWidget {
     final accent = danger
         ? const Color(0xFFFF6B6B)
         : color ?? themeColorOf(context.watch<AppState>().settings);
+    final labelText = Text(
+      label,
+      textAlign: TextAlign.center,
+      style: const TextStyle(
+        color: Colors.white,
+        fontSize: 14,
+        fontWeight: FontWeight.w700,
+      ),
+    );
     return Semantics(
       button: true,
       child: LiquidGlass(
         radius: BorderRadius.circular(14),
         tintColor: primary || danger ? accent : Colors.white,
         tintAlphaOverride: primary || danger ? 0.75 : 0.18,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+        padding: EdgeInsets.symmetric(
+          horizontal: expanded ? 8 : 16,
+          vertical: 11,
+        ),
         onTap: onPressed,
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: expanded ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (icon != null) ...[
               Icon(icon, color: Colors.white, size: 17),
               const SizedBox(width: 6),
             ],
-            Text(
-              label,
-              style: const TextStyle(
-                color: Colors.white,
-                fontSize: 14,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
+            if (expanded) Flexible(child: labelText) else labelText,
           ],
         ),
       ),

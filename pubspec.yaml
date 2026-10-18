@@ -43,6 +43,7 @@ dependencies:
   file_picker: ^12.2.0
   sqflite_common_ffi: ^2.4.2
   url_launcher: ^6.3.2
+  package_info_plus: ^10.2.2
   html: ^0.15.7
   archive: ^4.2.0
   xml: ^7.0.1
@@ -72,6 +73,7 @@ flutter:
 
   assets:
     - assets/wallpaper/
+    - licenses/design-systems-LICENSE.txt
 
   shaders:
     - shaders/liquid_glass.frag

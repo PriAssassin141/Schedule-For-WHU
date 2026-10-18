@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 import 'dart:ui' as ui;
+import 'dart:math' as math;
 
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -8,6 +9,8 @@ import 'package:provider/provider.dart';
 
 import 'package:class_manager/state/app_state.dart';
 import 'package:class_manager/widgets/glass.dart';
+import 'package:class_manager/widgets/glass_backdrop.dart';
+import 'package:class_manager/widgets/lens_motion.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -38,6 +41,9 @@ void main() {
     double refraction = 0,
     double dispersion = 0,
     double radius = 24,
+    double pressure = 0,
+    double lighting = 0,
+    Alignment pointer = const Alignment(-0.7, -0.8),
   }) async {
     final width = input.width.toDouble();
     final height = input.height.toDouble();
@@ -52,6 +58,11 @@ void main() {
       ..setFloat(7, radius)
       ..setFloat(8, refraction)
       ..setFloat(9, dispersion)
+      ..setFloat(10, pointer.x)
+      ..setFloat(11, pointer.y)
+      ..setFloat(12, pressure)
+      ..setFloat(13, 0)
+      ..setFloat(14, lighting)
       ..setImageSampler(0, input);
     final recorder = ui.PictureRecorder();
     Canvas(
@@ -71,7 +82,7 @@ void main() {
     (channel) => data.getUint8((y * width + x) * 4 + channel),
   );
 
-  test('折射只弯曲圆角边缘，横向和纵向卡片中心保持清晰', () async {
+  test('Lens 折射作用于背景，横向和纵向卡片中心保持清晰', () async {
     final program = await ui.FragmentProgram.fromAsset(
       'shaders/liquid_glass.frag',
     );
@@ -176,16 +187,25 @@ void main() {
     await mouse.addPointer(location: Offset.zero);
     await mouse.moveTo(tester.getCenter(find.text('课程信息')));
     await tester.pumpAndSettle();
-    expect(
-      tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale,
-      greaterThan(1),
-    );
+    final pose = find
+        .descendant(
+          of: find.byType(LensMotion),
+          matching: find.byType(Transform),
+        )
+        .first;
+    expect(tester.widget<Transform>(pose).transform.storage[0], 1);
+    final held = await tester.startGesture(tester.getCenter(find.text('课程信息')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 140));
+    expect(tester.widget<Transform>(pose).transform.storage[0], greaterThan(1));
+    await held.up();
+    await tester.pumpAndSettle();
     await tester.tap(find.text('课程信息'));
     await tester.pumpAndSettle();
-    expect(taps, 1);
+    expect(taps, 2);
     await mouse.moveTo(Offset.zero);
     await tester.pumpAndSettle();
-    expect(tester.widget<AnimatedScale>(find.byType(AnimatedScale)).scale, 1);
+    expect(tester.widget<Transform>(pose).transform.storage[0], 1);
     await mouse.removePointer();
     expect(tester.takeException(), isNull);
   });
@@ -225,7 +245,109 @@ void main() {
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     await panel(tester, state, onTap: () {});
     await tester.pumpAndSettle();
-    expect(find.byType(AnimatedScale), findsNothing);
+    expect(tester.widget<LensMotion>(find.byType(LensMotion)).enabled, isFalse);
+    final pose = find
+        .descendant(
+          of: find.byType(LensMotion),
+          matching: find.byType(Transform),
+        )
+        .first;
+    expect(tester.widget<Transform>(pose).transform.storage[0], 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  test('Lens 左侧折射与折射率1.45的斯涅尔计算相符', () async {
+    final program = await ui.FragmentProgram.fromAsset(
+      'shaders/liquid_glass.frag',
+    );
+    final input = await backdrop(240, 144);
+    final bytes = await render(program, input, refraction: 1);
+    const x = 2.5, halfWidth = 120.0, bevel = 19.0;
+    final edge = 1 - x / bevel;
+    final normalX =
+        -math.pow(edge, 1.65) * 0.94 +
+        (x - halfWidth) / halfWidth * 0.045 * (1 - edge);
+    final normalZ = math.sqrt(1 - normalX * normalX);
+    const eta = 1 / 1.45;
+    final coefficient =
+        math.sqrt(1 - eta * eta * (1 - normalZ * normalZ)) - eta * normalZ;
+    final rayX = -coefficient * normalX;
+    final rayZ = -eta - coefficient * normalZ;
+    final offset = rayX / -rayZ * 75 - (x - halfWidth) * 0.016;
+    final fraction = (x + offset) / 240;
+    final expectedRed =
+        (Colors.red.r * (1 - fraction) + Colors.blue.r * fraction) * 255;
+    expect(pixel(bytes, 240, 2, 72)[0], closeTo(expectedRed, 2));
+    input.dispose();
+  });
+
+  test('Lens 定向反光跟随光源，完整材质保持透明输入的alpha', () async {
+    final program = await ui.FragmentProgram.fromAsset(
+      'shaders/liquid_glass.frag',
+    );
+    final input = await backdrop(240, 144, alpha: 0.5);
+    final left = await render(
+      program,
+      input,
+      lighting: 1,
+      pointer: Alignment.topLeft,
+    );
+    final right = await render(
+      program,
+      input,
+      lighting: 1,
+      pointer: Alignment.bottomRight,
+    );
+    expect(pixel(left, 240, 2, 72), isNot(pixel(right, 240, 2, 72)));
+    final material = await render(
+      program,
+      input,
+      lighting: 1,
+      refraction: 0.9,
+      dispersion: 0.65,
+    );
+    for (var index = 0; index < material.lengthInBytes; index += 4) {
+      final alpha = material.getUint8(index + 3);
+      expect(alpha, 128);
+      for (var channel = 0; channel < 3; channel++) {
+        expect(material.getUint8(index + channel), lessThanOrEqualTo(alpha));
+      }
+    }
+    input.dispose();
+  });
+
+  testWidgets('回弹途中重按保持姿态连续，取消和卸载后停止动画', (tester) async {
+    final state = AppState.memory();
+    await panel(tester, state, onTap: () {});
+    double pressure() =>
+        tester.widget<GlassBackdrop>(find.byType(GlassBackdrop)).pressure;
+    final first = await tester.startGesture(
+      tester.getCenter(find.text('课程信息')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 140));
+    expect(pressure(), greaterThan(0.5));
+    await first.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    final before = pressure();
+    final second = await tester.startGesture(
+      tester.getCenter(find.text('课程信息')),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 1));
+    expect(pressure(), closeTo(before, 0.08));
+    await second.cancel();
+    await tester.pumpAndSettle();
+    expect(pressure(), 0);
+    expect(tester.binding.hasScheduledFrame, isFalse);
+    final third = await tester.startGesture(
+      tester.getCenter(find.text('课程信息')),
+    );
+    await tester.pump(const Duration(milliseconds: 80));
+    await tester.pumpWidget(const SizedBox.shrink());
+    await third.cancel();
+    await tester.pumpAndSettle();
     expect(tester.takeException(), isNull);
   });
 }

@@ -1,4 +1,5 @@
 import 'package:class_manager/models/schedule_adjustment.dart';
+import 'package:class_manager/theme/lens_material.dart';
 
 /// 应用个性化设置（对应「个性化」页的各项配置）。
 class AppSettings {
@@ -54,12 +55,12 @@ class AppSettings {
     this.immersiveBackground = true,
     this.backgroundBlur = 0.0,
     this.cardTransparency = 0.45,
-    this.cardBlur = 0.6,
+    this.cardBlur = LensMaterial.defaultBlur,
     this.liquidGlass = true,
     this.jellyEffect = true,
     this.saturation = 1.0,
-    this.refraction = 0.0,
-    this.dispersion = 0.0,
+    this.refraction = LensMaterial.defaultRefraction,
+    this.dispersion = LensMaterial.defaultDispersion,
     this.wallpaperPath,
     this.showGrid = true,
     this.userName = '',
@@ -94,12 +95,14 @@ class AppSettings {
     immersiveBackground: ((m['immersive_background'] as int?) ?? 1) == 1,
     backgroundBlur: (m['background_blur'] as num?)?.toDouble() ?? 0.0,
     cardTransparency: (m['card_transparency'] as num?)?.toDouble() ?? 0.45,
-    cardBlur: (m['card_blur'] as num?)?.toDouble() ?? 0.6,
+    cardBlur: (m['card_blur'] as num?)?.toDouble() ?? LensMaterial.defaultBlur,
     liquidGlass: ((m['liquid_glass'] as int?) ?? 1) == 1,
     jellyEffect: ((m['jelly_effect'] as int?) ?? 1) == 1,
     saturation: (m['saturation'] as num?)?.toDouble() ?? 1.0,
-    refraction: (m['refraction'] as num?)?.toDouble() ?? 0.0,
-    dispersion: (m['dispersion'] as num?)?.toDouble() ?? 0.0,
+    refraction:
+        (m['refraction'] as num?)?.toDouble() ?? LensMaterial.defaultRefraction,
+    dispersion:
+        (m['dispersion'] as num?)?.toDouble() ?? LensMaterial.defaultDispersion,
     wallpaperPath: m['wallpaper_path'] as String?,
     showGrid: ((m['show_grid'] as int?) ?? 1) == 1,
     userName: (m['user_name'] as String?) ?? '',

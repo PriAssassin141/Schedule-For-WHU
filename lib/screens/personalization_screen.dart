@@ -7,8 +7,10 @@ import 'package:provider/provider.dart';
 
 import 'package:class_manager/state/app_state.dart';
 import 'package:class_manager/theme/palette.dart';
+import 'package:class_manager/theme/lens_material.dart';
 import 'package:class_manager/widgets/app_background.dart';
 import 'package:class_manager/widgets/glass.dart';
+import 'package:class_manager/widgets/glass_dialog.dart';
 
 /// 个性化页：完整复刻图二的设置项。
 class PersonalizationScreen extends StatelessWidget {
@@ -19,6 +21,11 @@ class PersonalizationScreen extends StatelessWidget {
     final state = context.watch<AppState>();
     final settings = state.settings;
     final theme = themeColorOf(settings);
+    final material = LensMaterial.identify(
+      settings.refraction,
+      settings.cardBlur,
+      settings.dispersion,
+    );
 
     return BackgroundedScaffold(
       child: ListView(
@@ -141,11 +148,52 @@ class PersonalizationScreen extends StatelessWidget {
                 ),
                 GlassSwitchRow(
                   title: '液态玻璃',
-                  subtitle: '边缘折射与流动高光',
+                  subtitle: '性能要求较高，可能导致卡顿',
                   value: settings.liquidGlass,
                   onChanged: (v) =>
                       state.updateSettings(settings.copyWith(liquidGlass: v)),
                   showDivider: true,
+                ),
+                Padding(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                  child: Row(
+                    children: [
+                      const Expanded(
+                        child: Text(
+                          '玻璃材质',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      GlassSelect<String>(
+                        key: const ValueKey('lens_material'),
+                        title: 'Lens 玻璃材质',
+                        value: material,
+                        options: {
+                          for (final preset in LensMaterial.presets.entries)
+                            preset.key: preset.value.name,
+                          if (material == 'custom') 'custom': '自定义',
+                        },
+                        onChanged: (value) {
+                          final preset = LensMaterial.presets[value];
+                          if (preset == null) return;
+                          state.updateSettings(
+                            settings.copyWith(
+                              refraction: preset.refraction,
+                              cardBlur: preset.blur,
+                              dispersion: preset.dispersion,
+                            ),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
                 ),
                 GlassSwitchRow(
                   title: '果冻效果',
@@ -228,7 +276,7 @@ class PersonalizationScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        settings.wallpaperPath == null ? '使用内置流光渐变' : '已导入壁纸',
+                        settings.wallpaperPath == null ? '更改课表壁纸' : '已导入壁纸',
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 13.5,
@@ -237,7 +285,7 @@ class PersonalizationScreen extends StatelessWidget {
                       ),
                       const SizedBox(height: 3),
                       Text(
-                        '选择手机相册中的图片作为背景',
+                        '从手机相册中选择壁纸',
                         style: TextStyle(
                           color: Colors.white.withValues(alpha: 0.55),
                           fontSize: 11,

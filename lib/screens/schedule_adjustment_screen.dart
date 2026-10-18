@@ -135,6 +135,7 @@ class _ScheduleAdjustmentScreenState extends State<ScheduleAdjustmentScreen> {
                     children: [
                       SwitchListTile(
                         key: const ValueKey('holiday_adjustment_enabled'),
+                        thumbColor: const WidgetStatePropertyAll(Colors.white),
                         title: const Text('智能重排课表'),
                         subtitle: const Text('开启后，停课与补课安排即时生效'),
                         value: settings.holidayAdjustmentEnabled,
@@ -150,6 +151,7 @@ class _ScheduleAdjustmentScreenState extends State<ScheduleAdjustmentScreen> {
                       ),
                       SwitchListTile(
                         key: const ValueKey('use_national_holidays'),
+                        thumbColor: const WidgetStatePropertyAll(Colors.white),
                         title: const Text('使用国家节假日安排'),
                         subtitle: const Text('手动设置优先'),
                         value: settings.useNationalHolidays,
@@ -167,8 +169,8 @@ class _ScheduleAdjustmentScreenState extends State<ScheduleAdjustmentScreen> {
                 const SizedBox(height: 12),
                 LiquidGlass(
                   child: const Text(
-                    '国家安排规定放假及调休上班日期。补哪天的课为应用建议，请按学校通知修改。'
-                    '补课使用原日期的周次，替换补课日整天课表；不顺延整个学期。',
+                    'Tips：2026年以后的调休安排仅为预测，如有需要请根据实际安排手动设置调休日期，'
+                    '手动设置的调休日期优先级高于预测的国家安排日期',
                     style: TextStyle(
                       fontSize: 12,
                       height: 1.6,

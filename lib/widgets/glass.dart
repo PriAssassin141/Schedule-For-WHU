@@ -1,20 +1,21 @@
-import 'dart:math' as math;
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'package:class_manager/state/app_state.dart';
 import 'package:class_manager/theme/palette.dart';
 import 'package:class_manager/widgets/glass_backdrop.dart';
+import 'package:class_manager/widgets/lens_motion.dart';
 
-/// 玻璃面板：边缘折射、分层高光、色散及跟随指针的弹性反馈。
-///
-/// 对应「卡片背景模糊」「卡片透明」「液态玻璃」「果冻效果」「色散」等设置。
+/// Shared Lens surface: Snell refraction, quiet reflections and spring pressure.
+/// Text and controls stay native; Gaussian mode remains an independent option.
 class LiquidGlass extends StatefulWidget {
   final Widget child;
   final BorderRadius radius;
   final EdgeInsetsGeometry? padding;
-  final Color tintColor; // 着色基准色
+  final Color tintColor;
+
+  /// Optional translucent base above the backdrop, for readable modal surfaces.
+  final Color? backgroundColor;
   final double? tintAlphaOverride;
   final double? blurOverride;
   final bool? liquidOverride;
@@ -22,6 +23,8 @@ class LiquidGlass extends StatefulWidget {
   final VoidCallback? onLongPress;
   final Color? glowColor;
   final EdgeInsetsGeometry? margin;
+  final double pressure;
+  final bool refractFallback;
 
   const LiquidGlass({
     super.key,
@@ -29,6 +32,7 @@ class LiquidGlass extends StatefulWidget {
     this.radius = const BorderRadius.all(Radius.circular(16)),
     this.padding,
     this.tintColor = Colors.white,
+    this.backgroundColor,
     this.tintAlphaOverride,
     this.blurOverride,
     this.liquidOverride,
@@ -36,6 +40,8 @@ class LiquidGlass extends StatefulWidget {
     this.onLongPress,
     this.glowColor,
     this.margin,
+    this.pressure = 0,
+    this.refractFallback = false,
   });
 
   @override
@@ -72,301 +78,156 @@ class _LiquidGlassState extends State<LiquidGlass> {
   Widget build(BuildContext context) {
     final settings = context.watch<AppState>().settings;
     final liquid = widget.liquidOverride ?? settings.liquidGlass;
-    // 液态模式稍降低雾度，保留可见的背景折射；显式模糊值保持原样。
-    final sigma =
-        (widget.blurOverride ?? settings.cardBlur * (liquid ? 13 : 20)).clamp(
-          0.0,
-          40.0,
-        );
-    // 着色强度 → 不透明度：参照 iOS Liquid Glass（填充极淡，约 0.05~0.2）
-    final tint = widget.tintAlphaOverride != null
+    // Lens's nine-tap blur has sigma ~= 0.616 * radius. Native Gaussian blur
+    // gives the same frosted weight without nine texture fetches per channel.
+    final sigma = (widget.blurOverride ?? settings.cardBlur * (liquid ? 6 : 20))
+        .clamp(0.0, 40.0);
+    final configuredTint = widget.tintAlphaOverride != null
         ? (widget.tintAlphaOverride! * 0.38).clamp(0.0, 0.55)
         : (0.05 + (1 - settings.cardTransparency) * 0.20).clamp(0.03, 0.30);
+    final readablePanel = liquid && Scrollable.maybeOf(context) != null;
+    // A transparency setting of 100 must still leave settings groups legible.
+    // Keep the saved value intact; only the rendered surface has a small floor.
+    final panelTint =
+        0.11 + (1 - settings.cardTransparency).clamp(0.0, 1.0) * 0.08;
+    final tint = readablePanel && configuredTint < panelTint
+        ? panelTint
+        : configuredTint;
     final dispersion = liquid ? settings.dispersion.clamp(0.0, 1.0) : 0.0;
     final refraction = liquid ? settings.refraction.clamp(0.0, 1.0) : 0.0;
     final interactive = widget.onTap != null || widget.onLongPress != null;
     final reduceMotion = MediaQuery.disableAnimationsOf(context);
 
-    Widget content = ClipRRect(
-      borderRadius: widget.radius,
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: IgnorePointer(
-              child: GlassBackdrop(
-                radius: widget.radius,
-                sigma: sigma,
-                refraction: refraction,
-                dispersion: dispersion,
-              ),
-            ),
-          ),
-          // 淡色玻璃底（iOS 风格：几乎透明，仅轻微冷调）
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                borderRadius: widget.radius,
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    widget.tintColor.withValues(alpha: tint),
-                    widget.tintColor.withValues(alpha: tint * 0.55),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          // 高光和色散环只在玻璃表面绘制，不包裹或过滤文字。
-          if (liquid)
-            Positioned.fill(
-              child: IgnorePointer(
-                child: TweenAnimationBuilder<double>(
-                  tween: Tween(end: _pressed ? 1.0 : (_hovered ? 0.55 : 0.0)),
-                  duration: reduceMotion
-                      ? Duration.zero
-                      : const Duration(milliseconds: 180),
-                  builder: (context, activity, _) => CustomPaint(
-                    painter: _GlassEdgePainter(
-                      radius: widget.radius,
-                      light: _light,
-                      activity: activity,
-                      refraction: refraction,
-                      dispersion: dispersion,
+    Widget surface(BuildContext context, double pressure) {
+      Widget content = Container(
+        decoration: BoxDecoration(
+          borderRadius: widget.radius,
+          // A scrolling backdrop lens must not sample its own filled shadow.
+          boxShadow: readablePanel
+              ? const []
+              : [
+                  BoxShadow(
+                    color: (widget.glowColor ?? Colors.black).withValues(
+                      alpha: 0.20,
                     ),
+                    blurRadius: liquid ? 24 : 14,
+                    spreadRadius: liquid ? -10 : 0,
+                    offset: Offset(0, liquid ? 12 : 5),
+                  ),
+                ],
+        ),
+        child: ClipRRect(
+          borderRadius: widget.radius,
+          child: Stack(
+            children: [
+              Positioned.fill(
+                child: IgnorePointer(
+                  child: GlassBackdrop(
+                    radius: widget.radius,
+                    sigma: sigma,
+                    fallbackSigma:
+                        (widget.blurOverride ?? settings.cardBlur * 20).clamp(
+                          0.0,
+                          40.0,
+                        ),
+                    refraction: refraction,
+                    dispersion: dispersion,
+                    liquid: liquid,
+                    refractFallback: widget.refractFallback,
+                    pointer: _light,
+                    pressure: (pressure + widget.pressure).clamp(0.0, 1.16),
+                    hover: _pressed ? 1 : (_hovered ? 0.55 : 0),
                   ),
                 ),
               ),
-            )
-          else
-            Positioned.fill(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  borderRadius: widget.radius,
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.08),
-                    width: 1,
+              if (widget.backgroundColor != null)
+                Positioned.fill(
+                  child: ColoredBox(color: widget.backgroundColor!),
+                ),
+              Positioned.fill(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    borderRadius: widget.radius,
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        widget.tintColor.withValues(alpha: tint),
+                        widget.tintColor.withValues(alpha: tint * 0.55),
+                      ],
+                    ),
+                    border: readablePanel
+                        ? Border.all(
+                            color: Colors.white.withValues(alpha: 0.12),
+                            width: 0.75,
+                          )
+                        : liquid
+                        ? null
+                        : Border.all(
+                            color: Colors.white.withValues(alpha: 0.08),
+                            width: 1,
+                          ),
                   ),
                 ),
               ),
-            ),
-          if (widget.padding != null)
-            Padding(padding: widget.padding!, child: widget.child)
-          else
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-              child: widget.child,
-            ),
-        ],
-      ),
-    );
-
-    content = Container(
-      decoration: BoxDecoration(
-        borderRadius: widget.radius,
-        boxShadow: [
-          BoxShadow(
-            color: (widget.glowColor ?? Colors.black).withValues(
-              alpha: liquid ? 0.24 : 0.20,
-            ),
-            blurRadius: liquid ? 24 : 14,
-            offset: Offset(0, liquid ? 8 : 5),
+              Padding(
+                padding:
+                    widget.padding ??
+                    const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                child: widget.child,
+              ),
+            ],
           ),
-          if (liquid)
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.12),
-              blurRadius: 3,
-              offset: const Offset(0, 1),
-            ),
-        ],
-      ),
-      child: content,
-    );
-
-    // 原始指针事件不争夺子控件的手势：输入框、滑杆和滚动仍正常工作。
-    if (liquid) {
-      content = MouseRegion(
-        key: _surfaceKey,
-        cursor: interactive ? SystemMouseCursors.click : MouseCursor.defer,
-        onEnter: (event) {
-          setState(() => _hovered = true);
-          _moveLight(event.localPosition);
-        },
-        onHover: (event) => _moveLight(event.localPosition),
-        onExit: (_) => setState(() {
-          _hovered = false;
-          if (!_pressed) _light = const Alignment(-0.7, -0.8);
-        }),
-        child: Listener(
-          onPointerDown: (event) {
-            setState(() => _pressed = true);
-            _moveLight(event.localPosition);
-          },
-          onPointerMove: (event) => _moveLight(event.localPosition),
-          onPointerUp: (_) => _release(),
-          onPointerCancel: (_) => _release(),
-          child: content,
         ),
       );
+      if (liquid) {
+        content = MouseRegion(
+          key: _surfaceKey,
+          cursor: interactive ? SystemMouseCursors.click : MouseCursor.defer,
+          onEnter: (event) {
+            setState(() => _hovered = true);
+            _moveLight(event.localPosition);
+          },
+          onHover: (event) => _moveLight(event.localPosition),
+          onExit: (_) => setState(() {
+            _hovered = false;
+            if (!_pressed) _light = const Alignment(-0.7, -0.8);
+          }),
+          child: Listener(
+            onPointerDown: (event) {
+              setState(() => _pressed = true);
+              _moveLight(event.localPosition);
+            },
+            onPointerMove: (event) => _moveLight(event.localPosition),
+            onPointerUp: (_) => _release(),
+            onPointerCancel: (_) => _release(),
+            child: content,
+          ),
+        );
+      }
+      return content;
     }
 
-    // 果冻效果：按压缩放 + 弹性回弹
-    if (settings.jellyEffect && interactive && !reduceMotion) {
+    Widget content = interactive
+        ? LensMotion(
+            pressed: _pressed,
+            enabled: settings.jellyEffect && !reduceMotion,
+            direction: _light,
+            builder: surface,
+          )
+        : surface(context, 0);
+    if (interactive) {
       content = GestureDetector(
         onTap: widget.onTap,
         onLongPress: widget.onLongPress,
         onTapDown: (_) => setState(() => _pressed = true),
         onTapUp: (_) => _release(),
         onTapCancel: _release,
-        child: AnimatedScale(
-          scale: _pressed ? 0.97 : (liquid && _hovered ? 1.012 : 1.0),
-          duration: _pressed
-              ? const Duration(milliseconds: 70)
-              : const Duration(milliseconds: 480),
-          curve: _pressed ? Curves.easeOut : Curves.elasticOut,
-          child: content,
-        ),
-      );
-    } else if (interactive) {
-      content = GestureDetector(
-        onTap: widget.onTap,
-        onLongPress: widget.onLongPress,
         child: content,
       );
     }
-
     return Container(margin: widget.margin, child: content);
   }
-}
-
-/// 分层光学边缘，参考 liquid-glass-react 的遮罩描边及指针高光。
-/// 即使没有 Impeller 折射能力，也保持相同的表面光泽和厚度。
-class _GlassEdgePainter extends CustomPainter {
-  const _GlassEdgePainter({
-    required this.radius,
-    required this.light,
-    required this.activity,
-    required this.refraction,
-    required this.dispersion,
-  });
-
-  final BorderRadius radius;
-  final Alignment light;
-  final double activity;
-  final double refraction;
-  final double dispersion;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final rect = Offset.zero & size;
-    if (size.isEmpty) return;
-    final rrect = radius.toRRect(rect).scaleRadii();
-    final thickness = math.min(
-      size.shortestSide * 0.12,
-      2.0 + refraction * 3.0,
-    );
-
-    canvas.save();
-    canvas.clipRRect(rrect);
-
-    // 微弱的表面光泽，保留中心透明度。
-    canvas.drawRect(
-      rect,
-      Paint()
-        ..shader = LinearGradient(
-          begin: light,
-          end: Alignment(-light.x, -light.y),
-          colors: [
-            Colors.white.withValues(alpha: 0.055 + activity * 0.025),
-            Colors.white.withValues(alpha: 0.0),
-            Colors.black.withValues(alpha: 0.025),
-          ],
-          stops: const [0.0, 0.45, 1.0],
-        ).createShader(rect),
-    );
-
-    // 渐变内圈沿完整圆角行进，替代平直的顶部/底部高光线。
-    final rim = Path()
-      ..fillType = PathFillType.evenOdd
-      ..addRRect(rrect)
-      ..addRRect(rrect.deflate(thickness));
-    canvas.drawPath(
-      rim,
-      Paint()
-        ..shader = LinearGradient(
-          begin: light,
-          end: Alignment(-light.x, -light.y),
-          colors: [
-            Colors.white.withValues(alpha: 0.34 + activity * 0.16),
-            Colors.white.withValues(alpha: 0.035),
-            Colors.black.withValues(alpha: 0.09),
-            Colors.white.withValues(alpha: 0.20),
-          ],
-          stops: const [0, 0.38, 0.65, 1],
-        ).createShader(rect),
-    );
-    // 细外圈与内圈共同形成玻璃厚度，不改变卡片尺寸。
-    canvas.drawRRect(
-      rrect.deflate(0.5),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1
-        ..shader = LinearGradient(
-          begin: light,
-          end: Alignment(-light.x, -light.y),
-          colors: [
-            Colors.white.withValues(alpha: 0.68),
-            Colors.white.withValues(alpha: 0.08),
-            Colors.white.withValues(alpha: 0.35),
-          ],
-        ).createShader(rect),
-    );
-    canvas.drawRRect(
-      rrect.deflate(thickness + 0.5),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.6
-        ..color = Colors.white.withValues(alpha: 0.11),
-    );
-    if (dispersion > 0) {
-      canvas.drawPath(
-        rim,
-        Paint()
-          ..shader = LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              const Color(0xFF71DEFF).withValues(alpha: dispersion * 0.25),
-              Colors.transparent,
-              const Color(0xFFFFA3BA).withValues(alpha: dispersion * 0.25),
-            ],
-          ).createShader(rect),
-      );
-    }
-    if (activity > 0) {
-      canvas.drawRect(
-        rect,
-        Paint()
-          ..shader = RadialGradient(
-            center: light,
-            radius: 0.8,
-            colors: [
-              Colors.white.withValues(alpha: 0.12 * activity),
-              Colors.transparent,
-            ],
-          ).createShader(rect),
-      );
-    }
-    canvas.restore();
-  }
-
-  @override
-  bool shouldRepaint(covariant _GlassEdgePainter oldDelegate) =>
-      oldDelegate.radius != radius ||
-      oldDelegate.light != light ||
-      oldDelegate.activity != activity ||
-      oldDelegate.refraction != refraction ||
-      oldDelegate.dispersion != dispersion;
 }
 
 /// 小号玻璃图标按钮（主页右上角 + / 分享 / 菜单）。

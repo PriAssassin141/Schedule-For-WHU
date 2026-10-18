@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
+import 'package:class_manager/config/release_metadata.dart';
 import 'package:class_manager/screens/personalization_screen.dart';
 import 'package:class_manager/state/app_state.dart';
 import 'package:class_manager/theme/palette.dart';
 import 'package:class_manager/utils/greeting.dart';
 import 'package:class_manager/utils/links.dart';
 import 'package:class_manager/widgets/glass.dart';
+import 'package:class_manager/widgets/update_check_dialog.dart';
 
 /// 我的页：个性化入口 + 「联系作者 / 关于软件 / 检查更新」分组卡片。
 class MineScreen extends StatelessWidget {
@@ -16,7 +18,6 @@ class MineScreen extends StatelessWidget {
   static const String _qq = '1224850644';
   static const String _wechat = 'Assassin141_CUMT';
   static const String _email = '1224850644@qq.com';
-  static const String _updateUrl = 'https://pan.quark.cn/s/b57d9dfe897a';
   static const String _repoUrl =
       'https://github.com/PriAssassin141/Schedule-For-WHU';
   static const String _aboutText =
@@ -29,10 +30,11 @@ class MineScreen extends StatelessWidget {
   static const String _privacyText =
       '希望您仔细阅读此《表里珞珈隐私政策》（以下简称“本政策”），详细了解本 APP 对隐私信息的使用策略，'
       '以帮助您更好地了解本 APP，并决定您的使用方式。\n\n'
-      '本 APP 为纯本地软件，不对外提供任何形式的网络服务。用户的所有数据不会被以任何形式收集或上传，'
-      '只会被保存在手机本地。本 APP 亦没有注册功能，所有数据均由用户自行输入软件，'
-      '且仅仅保存在本地而不会被上传。\n\n'
-      '最后更新于 2026 年 9 月 8 日\n'
+      '本 APP 的课程、考试和个性化设置均保存在手机本地，不收集或上传这些数据，亦无注册功能。'
+      '仅在您点击“检查更新”时，应用会联网读取夸克分享目录中的更新日志，以核对版本并显示更新说明。'
+      '该请求不携带姓名、课表或设备标识；网盘服务仍会接收建立网络连接所需的 IP 等信息。'
+      '点击下载链接后，由外部浏览器或网盘应用打开下载页面。\n\n'
+      '最后更新于 2026 年 10 月 17 日\n'
       '闫梓萱';
 
   @override
@@ -52,17 +54,19 @@ class MineScreen extends StatelessWidget {
                 Text(
                   greeting.withName(settings.userName),
                   style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 24,
-                      fontWeight: FontWeight.w800,
-                      height: 1.2),
+                    color: Colors.white,
+                    fontSize: 24,
+                    fontWeight: FontWeight.w800,
+                    height: 1.2,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   '✨ ${greeting.reminder}',
                   style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 12.5),
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 12.5,
+                  ),
                 ),
               ],
             ),
@@ -74,7 +78,8 @@ class MineScreen extends StatelessWidget {
             title: '个性化设置',
             subtitle: '主题颜色 · 液态玻璃 · 背景模糊 · 壁纸',
             onTap: () => Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const PersonalizationScreen())),
+              MaterialPageRoute(builder: (_) => const PersonalizationScreen()),
+            ),
           ),
           const SizedBox(height: 12),
           // ---- 获取源码 ----
@@ -143,18 +148,24 @@ class MineScreen extends StatelessWidget {
               children: [
                 Icon(Icons.code_rounded, size: 19, color: theme),
                 const SizedBox(width: 8),
-                const Text('获取源码',
-                    style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w800)),
+                const Text(
+                  '获取源码',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
               ],
             ),
             const SizedBox(height: 6),
-            Text('本项目已在 GitHub 开源，欢迎 Star 与反馈',
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.55),
-                    fontSize: 11.5)),
+            Text(
+              '本项目已在 GitHub 开源，欢迎 Star 与反馈',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.55),
+                fontSize: 11.5,
+              ),
+            ),
             const SizedBox(height: 14),
             Container(
               width: double.infinity,
@@ -163,8 +174,10 @@ class MineScreen extends StatelessWidget {
                 color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: SelectableText(url,
-                  style: TextStyle(color: theme, fontSize: 12.5, height: 1.4)),
+              child: SelectableText(
+                url,
+                style: TextStyle(color: theme, fontSize: 12.5, height: 1.4),
+              ),
             ),
             const SizedBox(height: 14),
             Row(
@@ -182,11 +195,14 @@ class MineScreen extends StatelessWidget {
                         openExternalLink(context, url);
                       },
                       child: const Center(
-                        child: Text('打开链接',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w800)),
+                        child: Text(
+                          '打开链接',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -200,22 +216,26 @@ class MineScreen extends StatelessWidget {
                       padding: EdgeInsets.zero,
                       tintAlphaOverride: 0.18,
                       onTap: () async {
-                        await Clipboard.setData(
-                            const ClipboardData(text: url));
+                        await Clipboard.setData(const ClipboardData(text: url));
                         if (sheetCtx.mounted) Navigator.of(sheetCtx).pop();
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                  content: Text('链接已复制'),
-                                  duration: Duration(seconds: 1)));
+                            const SnackBar(
+                              content: Text('链接已复制'),
+                              duration: Duration(seconds: 1),
+                            ),
+                          );
                         }
                       },
                       child: const Center(
-                        child: Text('复制链接',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w800)),
+                        child: Text(
+                          '复制链接',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 14.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -242,21 +262,24 @@ class MineScreen extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('联系作者',
-                style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800)),
-            const SizedBox(height: 4),
-            Text('点击任意一行即可复制',
-                style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
-            const SizedBox(height: 14),
-            _ContactRow(
-              icon: Icons.chat_rounded,
-              label: 'QQ',
-              value: _qq,
+            const Text(
+              '联系作者',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.w800,
+              ),
             ),
+            const SizedBox(height: 4),
+            Text(
+              '点击任意一行即可复制',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 11,
+              ),
+            ),
+            const SizedBox(height: 14),
+            _ContactRow(icon: Icons.chat_rounded, label: 'QQ', value: _qq),
             const SizedBox(height: 10),
             _ContactRow(
               icon: Icons.message_rounded,
@@ -288,25 +311,30 @@ class MineScreen extends StatelessWidget {
         tintAlphaOverride: 0.34,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(sheetCtx).size.height * 0.62),
+            maxHeight: MediaQuery.of(sheetCtx).size.height * 0.62,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('关于软件',
-                  style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800)),
+              const Text(
+                '关于软件',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
               const SizedBox(height: 12),
               Flexible(
                 child: SingleChildScrollView(
                   child: Text(
                     _aboutText,
                     style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.88),
-                        fontSize: 13,
-                        height: 1.75),
+                      color: Colors.white.withValues(alpha: 0.88),
+                      fontSize: 13,
+                      height: 1.75,
+                    ),
                   ),
                 ),
               ),
@@ -317,9 +345,17 @@ class MineScreen extends StatelessWidget {
     );
   }
 
-  // ---------- 检查更新（跳转夸克网盘下载最新版）----------
+  // ---------- 检查更新（读取分享日志，用户选择后打开下载页）----------
   void _checkUpdate(BuildContext context) {
-    openExternalLink(context, _updateUrl);
+    showDialog<void>(
+      context: context,
+      builder: (dialogContext) => UpdateCheckDialog(
+        onDownload: () {
+          Navigator.of(dialogContext).pop();
+          openExternalLink(context, appUpdateShareUrl);
+        },
+      ),
+    );
   }
 
   // ---------- 隐私政策 ----------
@@ -335,22 +371,28 @@ class MineScreen extends StatelessWidget {
         tintAlphaOverride: 0.34,
         child: ConstrainedBox(
           constraints: BoxConstraints(
-              maxHeight: MediaQuery.of(sheetCtx).size.height * 0.62),
+            maxHeight: MediaQuery.of(sheetCtx).size.height * 0.62,
+          ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
                 children: [
-                  Icon(Icons.privacy_tip_outlined,
-                      size: 18,
-                      color: themeColorOf(context.read<AppState>().settings)),
+                  Icon(
+                    Icons.privacy_tip_outlined,
+                    size: 18,
+                    color: themeColorOf(context.read<AppState>().settings),
+                  ),
                   const SizedBox(width: 8),
-                  const Text('隐私政策',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800)),
+                  const Text(
+                    '隐私政策',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
                 ],
               ),
               const SizedBox(height: 12),
@@ -359,9 +401,10 @@ class MineScreen extends StatelessWidget {
                   child: Text(
                     _privacyText,
                     style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.88),
-                        fontSize: 13,
-                        height: 1.8),
+                      color: Colors.white.withValues(alpha: 0.88),
+                      fontSize: 13,
+                      height: 1.8,
+                    ),
                   ),
                 ),
               ),
@@ -394,7 +437,9 @@ class _MenuRow extends StatelessWidget {
           ? BoxDecoration(
               border: Border(
                 top: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.08), width: 0.6),
+                  color: Colors.white.withValues(alpha: 0.08),
+                  width: 0.6,
+                ),
               ),
             )
           : null,
@@ -408,14 +453,20 @@ class _MenuRow extends StatelessWidget {
               Icon(icon, size: 18, color: Colors.white.withValues(alpha: 0.85)),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(title,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w600)),
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
-              Icon(Icons.chevron_right_rounded,
-                  size: 18, color: Colors.white.withValues(alpha: 0.45)),
+              Icon(
+                Icons.chevron_right_rounded,
+                size: 18,
+                color: Colors.white.withValues(alpha: 0.45),
+              ),
             ],
           ),
         ),
@@ -447,9 +498,12 @@ class _ContactRow extends StatelessWidget {
         await Clipboard.setData(ClipboardData(text: value));
         if (context.mounted) {
           Navigator.of(context).pop();
-          ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
               content: Text('已复制$label：$value'),
-              duration: const Duration(seconds: 2)));
+              duration: const Duration(seconds: 2),
+            ),
+          );
         }
       },
       child: Row(
@@ -460,21 +514,30 @@ class _ContactRow extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(label,
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.6),
-                        fontSize: 11)),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.6),
+                    fontSize: 11,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(value,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700)),
+                Text(
+                  value,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
           ),
-          Icon(Icons.copy_rounded,
-              size: 16, color: Colors.white.withValues(alpha: 0.5)),
+          Icon(
+            Icons.copy_rounded,
+            size: 16,
+            color: Colors.white.withValues(alpha: 0.5),
+          ),
         ],
       ),
     );
@@ -516,21 +579,30 @@ class _SettingTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 14.5,
-                        fontWeight: FontWeight.w700)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
                 const SizedBox(height: 2),
-                Text(subtitle,
-                    style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.55),
-                        fontSize: 11)),
+                Text(
+                  subtitle,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontSize: 11,
+                  ),
+                ),
               ],
             ),
           ),
-          Icon(Icons.chevron_right_rounded,
-              color: Colors.white.withValues(alpha: 0.45), size: 20),
+          Icon(
+            Icons.chevron_right_rounded,
+            color: Colors.white.withValues(alpha: 0.45),
+            size: 20,
+          ),
         ],
       ),
     );

@@ -33,6 +33,11 @@ class ClassManagerApp extends StatelessWidget {
         builder: (context, state, _) => MaterialApp(
           title: '表里珞珈',
           debugShowCheckedModeBanner: false,
+          // Stretching overscroll creates an offscreen transform around live
+          // backdrop filters. Keep native scrolling without that extra layer.
+          scrollBehavior: const MaterialScrollBehavior().copyWith(
+            overscroll: false,
+          ),
           // 中文界面（日期/时间选择器等系统组件）
           locale: const Locale('zh', 'CN'),
           supportedLocales: const [Locale('zh', 'CN'), Locale('en', 'US')],
