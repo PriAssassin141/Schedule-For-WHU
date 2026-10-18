@@ -203,7 +203,7 @@ void main() {
 
     expect(find.textContaining('不收集或上传这些数据'), findsOneWidget);
     expect(find.textContaining('读取夸克分享目录中的更新日志'), findsOneWidget);
-    expect(find.textContaining('2026 年 10 月 17 日'), findsOneWidget);
+    expect(find.textContaining('2026 年 10 月 18 日'), findsOneWidget);
     expect(find.textContaining('闫梓萱'), findsOneWidget);
   });
 }

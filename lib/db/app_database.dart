@@ -5,6 +5,7 @@ import 'package:sqflite/sqflite.dart';
 import 'package:class_manager/models/app_settings.dart';
 import 'package:class_manager/models/course.dart';
 import 'package:class_manager/models/exam.dart';
+import 'package:class_manager/models/agenda_event.dart';
 
 /// SQLite 本地数据库（drift 亦可用，这里选用更轻量的 sqflite）。
 class AppDatabase {
@@ -21,7 +22,22 @@ class AppDatabase {
           (await getApplicationDocumentsDirectory()).path,
           'class_manager.db',
         );
-    _db = await openDatabase(path, version: 1, onCreate: _onCreate);
+    _db = await openDatabase(
+      path,
+      version: 3,
+      onCreate: _onCreate,
+      onUpgrade: (db, oldVersion, newVersion) async {
+        if (oldVersion < 2) await _createAgendaTable(db);
+        if (oldVersion == 2) {
+          await db.execute(
+            'ALTER TABLE agenda_events ADD COLUMN custom_category TEXT',
+          );
+          await db.execute(
+            'ALTER TABLE agenda_events ADD COLUMN custom_color INTEGER',
+          );
+        }
+      },
+    );
     await _initDefaults(_db!);
     return _db!;
   }
@@ -32,6 +48,7 @@ class AppDatabase {
   }
 
   Future<void> _onCreate(Database db, int version) async {
+    await _createAgendaTable(db);
     await db.execute('''
       CREATE TABLE courses(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -66,6 +83,51 @@ class AppDatabase {
   }
 
   // ---------- 课程 ----------
+  Future<void> _createAgendaTable(Database db) async {
+    await db.execute('''CREATE TABLE IF NOT EXISTS agenda_events(
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      start_at TEXT NOT NULL,
+      end_at TEXT NOT NULL,
+      description TEXT NOT NULL DEFAULT '',
+      location TEXT NOT NULL DEFAULT '',
+      category TEXT NOT NULL DEFAULT 'work',
+      custom_category TEXT,
+      custom_color INTEGER,
+      CHECK(end_at > start_at)
+    )''');
+    await db.execute(
+      'CREATE INDEX IF NOT EXISTS agenda_events_time ON agenda_events(start_at, end_at)',
+    );
+  }
+
+  Future<List<AgendaEvent>> loadAgendaEvents() async {
+    final db = await database;
+    return (await db.query(
+      'agenda_events',
+      orderBy: 'start_at, end_at, id',
+    )).map(AgendaEvent.fromMap).toList();
+  }
+
+  Future<int> insertAgendaEvent(AgendaEvent event) async {
+    final db = await database;
+    return db.insert('agenda_events', event.toMap()..remove('id'));
+  }
+
+  Future<void> updateAgendaEvent(AgendaEvent event) async {
+    final db = await database;
+    await db.update(
+      'agenda_events',
+      event.toMap(),
+      where: 'id = ?',
+      whereArgs: [event.id],
+    );
+  }
+
+  Future<void> deleteAgendaEvent(int id) async {
+    final db = await database;
+    await db.delete('agenda_events', where: 'id = ?', whereArgs: [id]);
+  }
 
   Future<List<Course>> loadCourses() async {
     final db = await database;

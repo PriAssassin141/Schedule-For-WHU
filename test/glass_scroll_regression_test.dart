@@ -10,6 +10,7 @@ import 'package:class_manager/main.dart';
 import 'package:class_manager/state/app_state.dart';
 import 'package:class_manager/widgets/glass.dart';
 import 'package:class_manager/widgets/lens_backdrop_refraction.dart';
+import 'package:class_manager/widgets/lens_reflection.dart';
 
 class _RealShadowBinding extends AutomatedTestWidgetsFlutterBinding {
   @override
@@ -19,7 +20,7 @@ class _RealShadowBinding extends AutomatedTestWidgetsFlutterBinding {
 void main() {
   _RealShadowBinding();
   testWidgets(
-    'Android 列表边界不拉伸玻璃，滑动后保留透镜与设置',
+    'Android 列表边界不拉伸玻璃，滑动后保留反光与设置',
     (tester) async {
       final state = AppState.memory();
       await state.updateSettings(state.settings.copyWith(cardTransparency: 1));
@@ -29,7 +30,26 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.byType(StretchingOverscrollIndicator), findsNothing);
       expect(find.byType(GlowingOverscrollIndicator), findsNothing);
-      expect(find.byType(LensBackdropRefraction), findsWidgets);
+      expect(
+        find.descendant(
+          of: find.byType(Scrollable),
+          matching: find.byType(LensBackdropRefraction),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.descendant(
+          of: find.byType(Scrollable),
+          matching: find.byType(RawMagnifier),
+        ),
+        findsNothing,
+      );
+      expect(
+        find.byWidgetPredicate(
+          (widget) => widget is CustomPaint && widget.painter is LensReflection,
+        ),
+        findsWidgets,
+      );
       await tester.drag(find.text('个性化设置'), const Offset(0, 300));
       await tester.pumpAndSettle();
       await tester.tap(find.text('个性化设置'));
@@ -146,7 +166,8 @@ void main() {
     await expectNeutral();
     await held.up();
     await tester.pumpAndSettle();
-    expect(find.byType(LensBackdropRefraction), findsWidgets);
+    expect(find.byType(LensBackdropRefraction), findsNothing);
+    expect(find.byType(RawMagnifier), findsNothing);
     // Zero optical values are preserved, and Gaussian mode remains independent.
     await state.updateSettings(
       state.settings.copyWith(refraction: 0, cardBlur: 0),
@@ -160,4 +181,107 @@ void main() {
     expect(state.settings.cardTransparency, 1);
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets(
+    '日程玻璃四角之外不绘制矩形暗块，滚动裁剪后仍保持背景',
+    (tester) async {
+      tester.view.physicalSize = const Size(720, 800);
+      tester.view.devicePixelRatio = 2;
+      addTearDown(tester.view.reset);
+      final state = AppState.memory();
+      final scroll = ScrollController();
+      addTearDown(scroll.dispose);
+      final boundary = GlobalKey();
+      await tester.pumpWidget(
+        ChangeNotifierProvider.value(
+          value: state,
+          child: MaterialApp(
+            home: RepaintBoundary(
+              key: boundary,
+              child: Scaffold(
+                backgroundColor: const Color(0xFFB0B0B0),
+                body: ListView(
+                  controller: scroll,
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    for (var i = 0; i < 4; i++)
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 16),
+                        child: LiquidGlass(
+                          key: ValueKey('agenda_edge_$i'),
+                          showShadow: false,
+                          backgroundColor: const Color(0x55121A22),
+                          tintColor: i.isEven ? Colors.orange : Colors.pink,
+                          tintAlphaOverride: 0.28,
+                          child: SizedBox(
+                            height: i == 0 ? 180 : 105,
+                            width: double.infinity,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      Future<void> checkCorners() async {
+        late ByteData bytes;
+        await tester.runAsync(() async {
+          final image =
+              await (boundary.currentContext!.findRenderObject()
+                      as RenderRepaintBoundary)
+                  .toImage();
+          bytes = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+          image.dispose();
+        });
+        for (var i = 0; i < 4; i++) {
+          final card = find.byKey(ValueKey('agenda_edge_$i'));
+          if (card.evaluate().isEmpty) continue;
+          final rect = tester.getRect(card);
+          for (final point in [
+            rect.topLeft + const Offset(1, 1),
+            rect.topRight + const Offset(-2, 1),
+            rect.bottomLeft + const Offset(1, -2),
+            rect.bottomRight + const Offset(-2, -2),
+          ]) {
+            final x = point.dx.floor(), y = point.dy.floor();
+            if (x < 0 || x >= 360 || y < 0 || y >= 400) continue;
+            final offset = (y * 360 + x) * 4;
+            for (var channel = 0; channel < 3; channel++) {
+              expect(
+                bytes.getUint8(offset + channel),
+                closeTo(176, 3),
+                reason: 'card $i left a rectangular footprint at $point',
+              );
+            }
+          }
+        }
+      }
+
+      for (final blur in [0.0, 0.24, 0.8]) {
+        await state.updateSettings(
+          state.settings.copyWith(cardBlur: blur, refraction: 1),
+        );
+        for (final offset in [0.0, 60.0, 140.0, 0.0]) {
+          scroll.jumpTo(offset);
+          await tester.pumpAndSettle();
+          if (Theme.of(tester.element(find.byType(Scaffold))).platform ==
+              TargetPlatform.android) {
+            expect(find.byType(RawMagnifier), findsNothing);
+          } else {
+            expect(find.byType(LensBackdropRefraction), findsWidgets);
+          }
+          await checkCorners();
+        }
+      }
+      expect(tester.takeException(), isNull);
+    },
+    variant: const TargetPlatformVariant({
+      TargetPlatform.android,
+      TargetPlatform.windows,
+    }),
+  );
 }

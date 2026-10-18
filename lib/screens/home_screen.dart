@@ -4,6 +4,8 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 
 import 'package:class_manager/models/course.dart';
+import 'package:class_manager/models/agenda_event.dart';
+import 'package:class_manager/screens/agenda_edit_screen.dart';
 import 'package:class_manager/models/periods.dart';
 import 'package:class_manager/models/schedule_adjustment.dart';
 import 'package:class_manager/screens/schedule_adjustment_screen.dart';
@@ -14,6 +16,7 @@ import 'package:class_manager/state/app_state.dart';
 import 'package:class_manager/theme/palette.dart';
 import 'package:class_manager/utils/weeks.dart';
 import 'package:class_manager/widgets/glass.dart';
+import 'package:class_manager/widgets/agenda_view.dart';
 import 'package:class_manager/widgets/course_info_dialog.dart';
 import 'package:class_manager/widgets/glass_dialog.dart';
 
@@ -25,47 +28,65 @@ class HomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final theme = themeColorOf(state.settings);
+    final courseMode = state.settings.homeViewMode == HomeViewMode.courses;
 
     return SafeArea(
       child: Column(
         children: [
           // ---- 顶部：第 N 周 + 图标按钮 ----
-          Padding(
-            padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
-            child: Row(
-              children: [
-                _WeekTitle(theme: theme),
-                const Spacer(),
-                GlassIconButton(
-                  icon: Icons.add_rounded,
-                  onTap: () => Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (_) => CourseEditScreen.course(
-                        null,
-                        context.read<AppState>(),
+          if (!courseMode)
+            AgendaHeader(onMenu: () => _showMenuSheet(context))
+          else
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: _WeekTitle(
+                        theme: theme,
+                        compact: MediaQuery.sizeOf(context).width < 600,
                       ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                GlassIconButton(
-                  icon: Icons.ios_share_rounded,
-                  onTap: () => _showShareSheet(context),
-                ),
-                const SizedBox(width: 8),
-                GlassIconButton(
-                  icon: Icons.menu_rounded,
-                  onTap: () => _showMenuSheet(context),
-                ),
-              ],
+                  const SizedBox(width: 6),
+                  GlassIconButton(
+                    icon: Icons.add_rounded,
+                    size: 32,
+                    onTap: () => Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (_) => CourseEditScreen.course(
+                          null,
+                          context.read<AppState>(),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  GlassIconButton(
+                    icon: Icons.ios_share_rounded,
+                    size: 32,
+                    onTap: () => _showShareSheet(context),
+                  ),
+                  const SizedBox(width: 6),
+                  GlassIconButton(
+                    icon: Icons.menu_rounded,
+                    size: 32,
+                    onTap: () => _showMenuSheet(context),
+                  ),
+                  const SizedBox(width: 6),
+                  const HomeViewSelector(),
+                ],
+              ),
             ),
-          ),
           const SizedBox(height: 6),
           // ---- 全周 7 天课表（SafeArea 已预留导航高度，这里只留参考图的紧凑间距）----
-          const Expanded(
+          Expanded(
             child: Padding(
               padding: EdgeInsets.only(bottom: 26),
-              child: _WeekPager(),
+              child: courseMode ? const _WeekPager() : const AgendaView(),
             ),
           ),
         ],
@@ -78,13 +99,15 @@ class HomeScreen extends StatelessWidget {
 
 class _WeekTitle extends StatelessWidget {
   final Color theme;
-  const _WeekTitle({required this.theme});
+  final bool compact;
+  const _WeekTitle({required this.theme, this.compact = false});
 
   @override
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     final week = state.browseWeek;
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         GestureDetector(
           onTap: () => _showWeekPicker(context),
@@ -117,20 +140,22 @@ class _WeekTitle extends StatelessWidget {
             ],
           ),
         ),
-        const SizedBox(width: 6),
-        Icon(
-          Icons.swap_vert_rounded,
-          size: 16,
-          color: Colors.white.withValues(alpha: 0.45),
-        ),
-        const SizedBox(width: 2),
-        Text(
-          '上下拖动切换周',
-          style: TextStyle(
-            fontSize: 10.5,
+        if (!compact) ...[
+          const SizedBox(width: 6),
+          Icon(
+            Icons.swap_vert_rounded,
+            size: 16,
             color: Colors.white.withValues(alpha: 0.45),
           ),
-        ),
+          const SizedBox(width: 2),
+          Text(
+            '上下拖动切换周',
+            style: TextStyle(
+              fontSize: 10.5,
+              color: Colors.white.withValues(alpha: 0.45),
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -1201,6 +1226,19 @@ void _showMenuSheet(BuildContext context) {
                   builder: (_) =>
                       CourseEditScreen.course(null, context.read<AppState>()),
                 ),
+              );
+            },
+          ),
+          _ActionRow(
+            icon: Icons.event_note_rounded,
+            label: '添加日程',
+            onTap: () {
+              Navigator.of(context).pop();
+              openAgendaEditor(
+                context,
+                initialDate: state.settings.homeViewMode == HomeViewMode.courses
+                    ? state.dateOf(state.browseWeek, state.selectedDay)
+                    : state.agendaDate,
               );
             },
           ),

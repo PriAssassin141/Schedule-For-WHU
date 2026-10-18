@@ -54,10 +54,10 @@ Dock 位移使用 `LensRailController` 的有限弹簧（质量 1、刚度 360�
 
 用户在 vivo X300 Pro / Android 17 反馈滚动边界暂时变黑、绿色线条和设置背景过于透明。Flutter 当前的运行时滤镜会随视口裁剪改变输入纹理的范围，不能把纹理归一化坐标直接当作完整面板坐标；上游已确认类似裁剪问题，见 [flutter/flutter #185175](https://github.com/flutter/flutter/issues/185175)。这与本工程的滚动玻璃路径相符，但本机没有该手机，不能把本地通过等同于该机验收。
 
-- `GlassBackdrop` 通过 `Scrollable.maybeOf` 在依赖变化时识别滚动面板。在滚动前、滚动中与静止时固定使用 `LensBackdropRefraction` 与 `LensReflection`，不加载或组合该面板的 `ImageFilter.shader`，避免随着可见范围变化而重映射曲面或独立 RGB 通道。非滚动表面（包括 Dock）保留原有 GLSL 路径，Dock 位移和到位弹簧参数不改动。
+- `GlassBackdrop` 通过 `Scrollable.maybeOf` 在依赖变化时识别滚动面板，不加载或组合该面板的 `ImageFilter.shader`，避免随着可见范围变化而重映射曲面或独立 RGB 通道。Android 滚动面板固定使用单层、边界钳制的原生模糊与 `LensReflection`，避免嵌套 `RawMagnifier` 的矩形采样区域在设备 GPU 上越过圆角。其他平台的滚动面板保留 `LensBackdropRefraction`。非滚动表面（包括 Dock）保留原有 GLSL 路径，Dock 位移和到位弹簧参数不改动。
 - 应用保留原生滚动物理，关闭边界拉伸与发光指示器，避免给实时背景滤镜再套一个拉伸离屏层；正常滚动、点击和输入不受影响。
 - 滚动玻璃不再绘制会参与自身背景采样的填充黑色阴影。其表面渐变起始 alpha 下限为 `0.11 + (1 - cardTransparency) × 0.08`，并使用 0.75px、12% alpha 的细边缘；原 tint 高于此下限时保留。透明度滑杆和数据库数值均不被重置，高斯模式保持独立。
-- 原生透镜仍真实采样当前位置的背景，保留折射滑杆、按压形变和定向反光。滚动路径不做独立 RGB 分采样，仅用轻微冷色反光表达色散感；它不等同于 GLSL 的逐像素斯涅尔折射与色散。
+- 非 Android 滚动透镜仍采样当前位置的背景并放大位移。Android 滚动卡片使用实时背景模糊与定向反光近似玻璃，不放大背景；按压形变、果冻反馈与色散反光保持生效，已保存的折射参数不被修改，非滚动表面继续使用它。滚动路径不做独立 RGB 分采样，不等同于 GLSL 的逐像素斯涅尔折射与色散。
 
 [Flutter 的 `ImageFilter.shader`](https://api.flutter.dev/flutter/dart-ui/ImageFilter/ImageFilter.shader.html) 仅支持 Impeller。先检查 `ImageFilter.isShaderFilterSupported`；Windows/Skia 等不支持的平台使用高斯毛玻璃、细定向反光和柔和内侧焦散的 Canvas 回退，不调用不支持的 API，也不承诺真实背景折射。关闭液态玻璃后完全回到普通高斯样式。
 

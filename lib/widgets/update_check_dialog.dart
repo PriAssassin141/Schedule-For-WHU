@@ -129,6 +129,7 @@ class _UpdateCheckDialogState extends State<UpdateCheckDialog> {
     } on FormatException {
       // Unknown build metadata must never be reported as up to date.
     }
+    final isUpToDate = !_checking && _error == null && needsUpdate == false;
     final status = _checking
         ? '正在扫描网盘更新日志…'
         : _error != null
@@ -136,8 +137,41 @@ class _UpdateCheckDialogState extends State<UpdateCheckDialog> {
         : needsUpdate == true
         ? '发现新版本，建议更新'
         : needsUpdate == false
-        ? '当前版本无需更新'
+        ? '当前为最新版本，无需更新'
         : '无法核对本机版本，请前往下载页面确认';
+    final statusRow = Row(
+      children: [
+        if (_checking)
+          SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(strokeWidth: 2, color: accent),
+          )
+        else
+          Icon(
+            _error != null
+                ? Icons.info_outline_rounded
+                : needsUpdate == true
+                ? Icons.new_releases_outlined
+                : needsUpdate == false
+                ? Icons.check_circle_outline_rounded
+                : Icons.info_outline_rounded,
+            color: _error == null ? accent : Colors.white70,
+            size: 20,
+          ),
+        const SizedBox(width: 9),
+        Expanded(
+          child: Text(
+            status,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w700,
+              height: 1.5,
+            ),
+          ),
+        ),
+      ],
+    );
     return GlassDialog(
       title: Row(
         children: [
@@ -167,42 +201,16 @@ class _UpdateCheckDialogState extends State<UpdateCheckDialog> {
             ),
           ],
           const SizedBox(height: 16),
-          Row(
-            children: [
-              if (_checking)
-                SizedBox(
-                  width: 18,
-                  height: 18,
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    color: accent,
-                  ),
-                )
-              else
-                Icon(
-                  _error != null
-                      ? Icons.info_outline_rounded
-                      : needsUpdate == true
-                      ? Icons.new_releases_outlined
-                      : needsUpdate == false
-                      ? Icons.check_circle_outline_rounded
-                      : Icons.info_outline_rounded,
-                  color: _error == null ? accent : Colors.white70,
-                  size: 20,
-                ),
-              const SizedBox(width: 9),
-              Expanded(
-                child: Text(
-                  status,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    height: 1.5,
-                  ),
-                ),
-              ),
-            ],
-          ),
+          if (isUpToDate)
+            LiquidGlass(
+              key: const ValueKey('update_up_to_date'),
+              tintColor: accent,
+              tintAlphaOverride: 0.2,
+              padding: const EdgeInsets.all(16),
+              child: statusRow,
+            )
+          else
+            statusRow,
           if (_error != null) ...[
             const SizedBox(height: 8),
             Text(
@@ -218,7 +226,7 @@ class _UpdateCheckDialogState extends State<UpdateCheckDialog> {
               label: Text('重新检查', style: TextStyle(color: accent)),
             ),
           ],
-          if (latest != null) ...[
+          if (latest != null && !isUpToDate) ...[
             const SizedBox(height: 14),
             _versionRow('网盘最新版本', 'v${latest.version.label}', accent),
             const SizedBox(height: 8),
@@ -242,11 +250,13 @@ class _UpdateCheckDialogState extends State<UpdateCheckDialog> {
               ),
             ],
           ],
-          const SizedBox(height: 12),
-          const Text(
-            '如需获取最新版本安装包，请点击下方按钮前往下载链接。',
-            style: TextStyle(color: Colors.white70, height: 1.6),
-          ),
+          if (!isUpToDate) ...[
+            const SizedBox(height: 12),
+            const Text(
+              '如需获取最新版本安装包，请点击下方按钮前往下载链接。',
+              style: TextStyle(color: Colors.white70, height: 1.6),
+            ),
+          ],
         ],
       ),
       actions: [

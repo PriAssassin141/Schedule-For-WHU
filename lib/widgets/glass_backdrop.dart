@@ -1,12 +1,14 @@
 import 'dart:ui' as ui;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:class_manager/widgets/lens_reflection.dart';
 import 'package:class_manager/widgets/lens_backdrop_refraction.dart';
 
 /// Filters only the scene behind a panel; the child and its text stay sharp.
-/// Scrollable panels use native backdrop lenses on every backend, avoiding
-/// runtime-effect UV changes under viewport clipping and scroll transforms.
+/// Scrollable panels avoid runtime-effect UV changes under viewport clipping.
+/// Android also avoids nested magnifier layers whose rectangular sampling
+/// bounds can bleed past rounded clips on device GPUs.
 class GlassBackdrop extends StatefulWidget {
   const GlassBackdrop({
     super.key,
@@ -20,6 +22,7 @@ class GlassBackdrop extends StatefulWidget {
     this.pressure = 0,
     this.hover = 0,
     this.refractFallback = false,
+    this.nativeOnly = false,
   });
 
   final BorderRadius radius;
@@ -32,6 +35,7 @@ class GlassBackdrop extends StatefulWidget {
   final double pressure;
   final double hover;
   final bool refractFallback;
+  final bool nativeOnly;
 
   @override
   State<GlassBackdrop> createState() => _GlassBackdropState();
@@ -46,6 +50,7 @@ class _GlassBackdropState extends State<GlassBackdrop> {
   bool get _needsShader =>
       ui.ImageFilter.isShaderFilterSupported &&
       widget.liquid &&
+      !widget.nativeOnly &&
       !_insideScrollable;
 
   @override
@@ -92,6 +97,9 @@ class _GlassBackdropState extends State<GlassBackdrop> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final size = constraints.biggest;
+        final androidScrolling =
+            _insideScrollable &&
+            defaultTargetPlatform == TargetPlatform.android;
         final ready = _needsShader && _shader != null;
         final sigma = ready
             ? widget.sigma
@@ -130,6 +138,7 @@ class _GlassBackdropState extends State<GlassBackdrop> {
           fit: StackFit.expand,
           children: [
             if (widget.liquid &&
+                !androidScrolling &&
                 !ready &&
                 (widget.refractFallback || _insideScrollable) &&
                 widget.refraction > 0)
@@ -139,6 +148,9 @@ class _GlassBackdropState extends State<GlassBackdrop> {
                 pressure: widget.pressure,
                 sigma: sigma,
               )
+            // Keep Android scrolling lenses on a single clamped blur layer.
+            // The same directional Lens reflection remains above the blur;
+            // pressure/jelly geometry and saved optical values are unchanged.
             else if (filter != null)
               BackdropFilter(filter: filter, child: const SizedBox.expand()),
             if (widget.liquid && (!_needsShader || _shader == null))

@@ -9,6 +9,8 @@ import 'package:class_manager/db/app_database.dart';
 import 'package:class_manager/models/app_settings.dart';
 import 'package:class_manager/models/course.dart';
 import 'package:class_manager/models/exam.dart';
+import 'package:class_manager/models/agenda_event.dart';
+import 'package:class_manager/services/agenda_timeline.dart';
 import 'package:class_manager/models/schedule_adjustment.dart';
 import 'package:class_manager/services/schedule_resolver.dart';
 import 'package:class_manager/services/schedule_parser.dart';
@@ -21,6 +23,9 @@ class AppState extends ChangeNotifier {
 
   List<Course> courses = [];
   List<Exam> exams = [];
+  List<AgendaEvent> agendaEvents = [];
+  DateTime agendaDate = calendarDate(DateTime.now());
+  int? _courseWeekOnAgendaExit;
   AppSettings settings = AppSettings();
 
   int selectedDay = 1; // 1..7
@@ -44,6 +49,7 @@ class AppState extends ChangeNotifier {
     if (db == null) return;
     courses = await db!.loadCourses();
     exams = await db!.loadExams();
+    agendaEvents = await db!.loadAgendaEvents();
     settings = await db!.loadSettings();
     browseWeek = currentWeek;
     notifyListeners();
@@ -127,6 +133,89 @@ class AppState extends ChangeNotifier {
   }
 
   // ---------- 界面状态 ----------
+  List<AgendaDayItem> agendaItemsOn(
+    DateTime date, {
+    bool includeCourses = false,
+  }) => AgendaTimeline.forDay(
+    date,
+    agendaEvents,
+    courses: includeCourses ? occurrencesOn(date) : const [],
+  );
+
+  void setAgendaDate(DateTime date) {
+    final first = DateTime(2000);
+    final last = DateTime(2100, 12, 31);
+    agendaDate = date.isBefore(first)
+        ? first
+        : date.isAfter(last)
+        ? last
+        : calendarDate(date);
+    selectedDay = agendaDate.weekday;
+    notifyListeners();
+  }
+
+  Future<void> setHomeViewMode(HomeViewMode mode) async {
+    if (settings.homeViewMode == mode) return;
+    final previous = settings.homeViewMode;
+    final next = settings.copyWith(homeViewMode: mode);
+    if (db != null) await db!.saveSettings(next);
+    settings = next;
+    if (previous == HomeViewMode.courses &&
+        mode != HomeViewMode.courses &&
+        (_courseWeekOnAgendaExit == null ||
+            _courseWeekOnAgendaExit != browseWeek)) {
+      agendaDate = browseWeek == currentWeek
+          ? calendarDate(DateTime.now())
+          : dateOf(browseWeek, selectedDay);
+    } else if (mode == HomeViewMode.courses) {
+      browseWeek = weekOf(agendaDate, settings.startDate);
+      _courseWeekOnAgendaExit = browseWeek;
+    }
+    notifyListeners();
+  }
+
+  Future<AgendaEvent> saveAgendaEvent(AgendaEvent event) async {
+    var saved = event;
+    if (event.id == null) {
+      final id = db != null
+          ? await db!.insertAgendaEvent(event)
+          : agendaEvents.fold<int>(
+                  0,
+                  (max, e) => (e.id ?? 0) > max ? e.id! : max,
+                ) +
+                1;
+      saved = event.copyWith(id: id);
+      agendaEvents.add(saved);
+    } else {
+      final index = agendaEvents.indexWhere((e) => e.id == event.id);
+      if (index < 0) throw StateError('日程已不存在，请返回后重试');
+      if (db != null) await db!.updateAgendaEvent(event);
+      agendaEvents[index] = event;
+    }
+    agendaEvents.sort((a, b) => a.startAt.compareTo(b.startAt));
+    notifyListeners();
+    return saved;
+  }
+
+  Future<String> saveAgendaCategory(String name) async {
+    final label = name.trim();
+    if (label.isEmpty || label.length > 20) throw ArgumentError('类型名称应为1—20字');
+    if (!AgendaCategory.values.any((c) => c.label == label) &&
+        !settings.agendaCustomCategories.contains(label)) {
+      await updateSettings(
+        settings.copyWith(
+          agendaCustomCategories: [...settings.agendaCustomCategories, label],
+        ),
+      );
+    }
+    return label;
+  }
+
+  Future<void> deleteAgendaEvent(AgendaEvent event) async {
+    if (db != null && event.id != null) await db!.deleteAgendaEvent(event.id!);
+    agendaEvents.removeWhere((e) => e.id == event.id);
+    notifyListeners();
+  }
 
   void setBrowseWeek(int w) {
     browseWeek = w.clamp(1, kMaxWeek);

@@ -25,6 +25,10 @@ class LiquidGlass extends StatefulWidget {
   final EdgeInsetsGeometry? margin;
   final double pressure;
   final bool refractFallback;
+  final bool showShadow;
+
+  /// Use native optics on transformed overlay surfaces as well as scrollables.
+  final bool nativeBackdrop;
 
   const LiquidGlass({
     super.key,
@@ -42,6 +46,8 @@ class LiquidGlass extends StatefulWidget {
     this.margin,
     this.pressure = 0,
     this.refractFallback = false,
+    this.showShadow = true,
+    this.nativeBackdrop = false,
   });
 
   @override
@@ -103,7 +109,7 @@ class _LiquidGlassState extends State<LiquidGlass> {
         decoration: BoxDecoration(
           borderRadius: widget.radius,
           // A scrolling backdrop lens must not sample its own filled shadow.
-          boxShadow: readablePanel
+          boxShadow: readablePanel || !widget.showShadow
               ? const []
               : [
                   BoxShadow(
@@ -123,6 +129,7 @@ class _LiquidGlassState extends State<LiquidGlass> {
               Positioned.fill(
                 child: IgnorePointer(
                   child: GlassBackdrop(
+                    nativeOnly: widget.nativeBackdrop,
                     radius: widget.radius,
                     sigma: sigma,
                     fallbackSigma:

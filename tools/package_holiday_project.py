@@ -52,6 +52,16 @@ new_files = [
     'tools/check_quark_update.dart',
     'docs/UPDATE_CHECK.md',
     'docs/update-manifest.example.json',
+    'lib/models/agenda_event.dart',
+    'lib/services/agenda_timeline.dart',
+    'lib/screens/agenda_edit_screen.dart',
+    'lib/widgets/agenda_event_dialog.dart',
+    'lib/widgets/agenda_view.dart',
+    'test/agenda_event_test.dart',
+    'test/agenda_database_test.dart',
+    'test/agenda_ui_test.dart',
+    'tools/agenda_preview_test.dart',
+    'docs/AGENDA.md',
 ]
 patch_parts = []
 changes = []
@@ -79,12 +89,12 @@ with zipfile.ZipFile(baseline_path) as baseline:
         ))
         changes.append(name)
     selected = sorted(set(baseline_files + new_files))
-    source_zip = artifacts / 'ClassManager-v1.0.4-source.zip'
+    source_zip = artifacts / 'ClassManager-v1.1.0-source.zip'
     with zipfile.ZipFile(source_zip, 'w', zipfile.ZIP_DEFLATED) as archive:
         for name in selected:
             archive.write(project / name, f'ClassManager-New/{name}')
 
-patch_path = artifacts / 'ClassManager-v1.0.3-to-v1.0.4.patch'
+patch_path = artifacts / 'ClassManager-v1.0.3-to-v1.1.0.patch'
 patch_path.write_text(''.join(patch_parts), encoding='utf-8', newline='\n')
 print(json.dumps({'changed_files': changes, 'patch': str(patch_path),
                   'source_zip': str(source_zip), 'patch_bytes': patch_path.stat().st_size},

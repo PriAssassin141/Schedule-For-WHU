@@ -1,4 +1,4 @@
-param([string]$Version = '1.0.4')
+param([string]$Version = '1.1.0')
 
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.IO.Compression.FileSystem

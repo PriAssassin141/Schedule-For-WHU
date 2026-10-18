@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
+import 'package:class_manager/config/release_metadata.dart';
 import 'package:class_manager/models/update_manifest.dart';
 import 'package:class_manager/services/quark_update_service.dart';
 import 'package:class_manager/state/app_state.dart';
@@ -58,16 +59,20 @@ void main() {
   }
 
   testWidgets('两种玻璃模式显示当前版、最新版、时间及说明，同版本新发布时间也提示更新', (tester) async {
+    final nextTime = formatReleaseTime(
+      parseReleaseTime(appReleaseUpdateTime).add(const Duration(minutes: 1)),
+    );
+    final nextStamp = nextTime.replaceAll(RegExp(r'[-: ]'), '');
     for (final liquid in [true, false]) {
       await open(
         tester,
-        () => StubUpdateChecker(() async => sampleUpdate(time: 202610170014)),
+        () => StubUpdateChecker(() async => sampleUpdate(time: nextStamp)),
         liquid: liquid,
       );
       await tester.pumpAndSettle();
       expect(find.text('发现新版本，建议更新'), findsOneWidget);
       expect(find.text('v1.0.4'), findsNWidgets(2));
-      expect(find.text('更新时间：2026-10-17 00:14'), findsOneWidget);
+      expect(find.text('更新时间：$nextTime'), findsOneWidget);
       expect(find.text('修复已知问题，优化课表体验。'), findsOneWidget);
       expect(find.text('跳转到下载链接').hitTestable(), findsOneWidget);
       expect(find.text('取消').hitTestable(), findsOneWidget);
@@ -77,17 +82,39 @@ void main() {
     }
   });
 
-  testWidgets('同版本同时间与更低版本不提示更新', (tester) async {
-    for (final version in ['v1.0.4', 'v1.0.3']) {
-      await open(
-        tester,
-        () => StubUpdateChecker(() async => sampleUpdate(version: version)),
-      );
-      await tester.pumpAndSettle();
-      expect(find.text('当前版本无需更新'), findsOneWidget);
-      expect(find.text('发现新版本，建议更新'), findsNothing);
-      await tester.tap(find.text('取消'));
-      await tester.pumpAndSettle();
+  testWidgets('无需更新时只显示独立提示栏，隐藏网盘版本、更新时间与说明', (tester) async {
+    for (final liquid in [true, false]) {
+      for (final version in ['v1.0.4', 'v1.0.3']) {
+        await open(
+          tester,
+          () => StubUpdateChecker(
+            () async =>
+                sampleUpdate(version: version, time: appReleaseUpdateTime),
+          ),
+          liquid: liquid,
+        );
+        await tester.pumpAndSettle();
+        expect(find.text('当前为最新版本，无需更新'), findsOneWidget);
+        expect(
+          find.descendant(
+            of: find.byKey(const ValueKey('update_up_to_date')),
+            matching: find.text('当前为最新版本，无需更新'),
+          ),
+          findsOneWidget,
+        );
+        expect(find.text('当前版本'), findsOneWidget);
+        expect(find.text('v1.0.4'), findsOneWidget);
+        expect(find.text('网盘最新版本'), findsNothing);
+        expect(find.textContaining('更新时间：'), findsNothing);
+        expect(find.text('更新内容'), findsNothing);
+        expect(find.textContaining('如需获取最新版本安装包'), findsNothing);
+        expect(find.text('修复已知问题，优化课表体验。'), findsNothing);
+        expect(find.text('发现新版本，建议更新'), findsNothing);
+        expect(find.text('跳转到下载链接').hitTestable(), findsOneWidget);
+        expect(find.text('取消').hitTestable(), findsOneWidget);
+        await tester.tap(find.text('取消'));
+        await tester.pumpAndSettle();
+      }
     }
   });
 
@@ -105,7 +132,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('检查更新失败'), findsOneWidget);
     expect(find.textContaining('超时'), findsOneWidget);
-    expect(find.text('当前版本无需更新'), findsNothing);
+    expect(find.text('当前为最新版本，无需更新'), findsNothing);
     expect(downloads, 0);
     await tester.tap(find.text('重新检查'));
     await tester.pumpAndSettle();

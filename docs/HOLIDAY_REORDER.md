@@ -4,7 +4,7 @@
 
 本工程从用户指定仓库的 `SFW-V1.0.3` 标签导出，基线提交为
 `0ef75ceb70969e0236bc3bb6793ac23ecf77c93b`，不含后续 v1.1.0 的网页导入与校园网改动。
-原标签内的 `pubspec.yaml` 仍为 `1.0.0+1`；此功能副本改为 `1.0.4+4`，便于识别安装包。
+原标签内的 `pubspec.yaml` 仍为 `1.0.0+1`；此功能副本现为 `1.1.0+15`，便于识别安装包。
 原 `F:\Vibe_Coding\ClassManager` 工程保持原样。
 
 当前唯一工作目录为 `F:\Vibe_Coding\ClassManager-New`。
@@ -123,5 +123,5 @@ flutter build apk --release
 课程卡片新增测试覆盖查看后编辑、返回课表不重复弹窗、关闭与遮罩不修改课程、删除前确认与取消、空字段、窄屏与大字体的长文本滚动；调休用例继续验证实际/原日期展示及编辑原课程。
 新增用例验证2035年年份选择、按所选年份添加手动规则、农历闰月与节日重合、两种玻璃模式、日期选择至2035、24小时时间确认/取消和即时主题色更新。
 
-运行 `tools/package.ps1` 生成当前 `artifacts/ClassManager-v1.0.4.apk`、`artifacts/ClassManager-v1.0.4-source.zip` 和 `artifacts/ClassManager-v1.0.3-to-v1.0.4.patch`。
+运行 `tools/package.ps1` 生成当前 `artifacts/ClassManager-v1.1.0.apk`、`artifacts/ClassManager-v1.1.0-source.zip` 和 `artifacts/ClassManager-v1.0.3-to-v1.1.0.patch`。
 源码包排除编译缓存与已有交付文件，解压后的目录名为 `ClassManager-New`。

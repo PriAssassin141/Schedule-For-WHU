@@ -256,9 +256,10 @@ class _LensDockState extends State<LensDock> with TickerProviderStateMixin {
                                 focusNode: _focus[i],
                                 onPressed: () => widget.onChanged(i),
                                 style: TextButton.styleFrom(
-                                  splashFactory: liquid
-                                      ? NoSplash.splashFactory
-                                      : null,
+                                  // Keep ink from painting on the scaffold below
+                                  // the glass and lingering under a previous tab.
+                                  splashFactory: NoSplash.splashFactory,
+                                  overlayColor: Colors.transparent,
                                   padding: EdgeInsets.zero,
                                   minimumSize: Size.zero,
                                   tapTargetSize:

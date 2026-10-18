@@ -82,6 +82,7 @@ class GlassDialogButton extends StatelessWidget {
   final bool expanded;
   final Color? color;
   final IconData? icon;
+  final bool nativeBackdrop;
 
   const GlassDialogButton({
     super.key,
@@ -92,6 +93,7 @@ class GlassDialogButton extends StatelessWidget {
     this.expanded = false,
     this.color,
     this.icon,
+    this.nativeBackdrop = false,
   });
 
   @override
@@ -111,6 +113,7 @@ class GlassDialogButton extends StatelessWidget {
     return Semantics(
       button: true,
       child: LiquidGlass(
+        nativeBackdrop: nativeBackdrop,
         radius: BorderRadius.circular(14),
         tintColor: primary || danger ? accent : Colors.white,
         tintAlphaOverride: primary || danger ? 0.75 : 0.18,
@@ -141,6 +144,10 @@ class GlassSelect<T> extends StatelessWidget {
   final String title;
   final Map<T, String> options;
   final ValueChanged<T>? onChanged;
+  final String? extraOptionLabel;
+  final Key? extraOptionKey;
+  final VoidCallback? onExtraOption;
+  final bool centerSelectedLabel;
 
   const GlassSelect({
     super.key,
@@ -148,10 +155,14 @@ class GlassSelect<T> extends StatelessWidget {
     required this.title,
     required this.options,
     required this.onChanged,
+    this.extraOptionLabel,
+    this.extraOptionKey,
+    this.onExtraOption,
+    this.centerSelectedLabel = false,
   });
 
   Future<void> _choose(BuildContext context) async {
-    final selected = await showDialog<T>(
+    final route = DialogRoute<({T? value, bool extra})>(
       context: context,
       builder: (dialogContext) => GlassDialog(
         title: Text(title),
@@ -171,7 +182,9 @@ class GlassSelect<T> extends StatelessWidget {
                     horizontal: 14,
                     vertical: 13,
                   ),
-                  onTap: () => Navigator.of(dialogContext).pop(option.key),
+                  onTap: () => Navigator.of(
+                    dialogContext,
+                  ).pop((value: option.key, extra: false)),
                   child: Row(
                     children: [
                       Expanded(
@@ -193,17 +206,57 @@ class GlassSelect<T> extends StatelessWidget {
                   ),
                 ),
               ),
+            if (extraOptionLabel != null && onExtraOption != null) ...[
+              const Divider(color: Colors.white12, height: 16),
+              LiquidGlass(
+                key: extraOptionKey,
+                tintAlphaOverride: 0.2,
+                onTap: () =>
+                    Navigator.of(dialogContext).pop((value: null, extra: true)),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.add_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        extraOptionLabel!,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
         actions: [
           GlassDialogButton(
             label: '取消',
+            nativeBackdrop: true,
             onPressed: () => Navigator.of(dialogContext).pop(),
           ),
         ],
       ),
     );
-    if (selected != null && context.mounted) onChanged?.call(selected);
+    final selected = await Navigator.of(
+      context,
+      rootNavigator: true,
+    ).push(route);
+    if (selected == null || !context.mounted) return;
+    if (selected.extra) {
+      await route.completed;
+      if (context.mounted) onExtraOption?.call();
+    } else {
+      final value = selected.value;
+      if (value != null) onChanged?.call(value);
+    }
   }
 
   @override
@@ -215,11 +268,18 @@ class GlassSelect<T> extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 11),
       onTap: onChanged == null ? null : () => _choose(context),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisSize: centerSelectedLabel ? MainAxisSize.max : MainAxisSize.min,
         children: [
+          if (centerSelectedLabel) const SizedBox(width: 26),
           Flexible(
+            fit: centerSelectedLabel ? FlexFit.tight : FlexFit.loose,
             child: Text(
               options[value] ?? '',
+              textAlign: centerSelectedLabel
+                  ? TextAlign.center
+                  : TextAlign.start,
+              maxLines: centerSelectedLabel ? 1 : null,
+              overflow: centerSelectedLabel ? TextOverflow.ellipsis : null,
               style: const TextStyle(color: Colors.white, fontSize: 13.5),
             ),
           ),

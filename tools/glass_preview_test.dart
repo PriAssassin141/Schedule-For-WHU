@@ -11,6 +11,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:provider/provider.dart';
 
 import 'package:class_manager/main.dart';
+import 'package:class_manager/config/release_metadata.dart';
 import 'package:class_manager/models/course.dart';
 import 'package:class_manager/services/quark_update_service.dart';
 import 'package:class_manager/state/app_state.dart';
@@ -62,6 +63,8 @@ void main() {
       Provider<UpdateCheckerFactory>.value(
         value: () => StubUpdateChecker(
           () async => sampleUpdate(
+            version: 'v1.1.0',
+            time: appReleaseUpdateTime,
             description:
                 'v1.0.4更新内容：①加入课表根据法定节假日调休智能更新功能；'
                 '②加入了自动检查更新功能；③优化了液态玻璃的外观与动画',
@@ -119,13 +122,16 @@ void main() {
     PackageInfo.setMockInitialValues(
       appName: '表里珞珈',
       packageName: 'com.classmanager.class_manager',
-      version: '1.0.4',
-      buildNumber: '4',
+      version: '1.1.0',
+      buildNumber: '15',
       buildSignature: '',
     );
     await tester.tap(find.text('检查更新'));
     await tester.pumpAndSettle();
     await capture('update-dialog-liquid');
+    expect(find.text('当前为最新版本，无需更新'), findsOneWidget);
+    expect(find.text('网盘最新版本'), findsNothing);
+    expect(find.text('更新内容'), findsNothing);
     await state.updateSettings(state.settings.copyWith(liquidGlass: false));
     await tester.pumpAndSettle();
     await capture('update-dialog-gaussian');

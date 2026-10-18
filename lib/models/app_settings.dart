@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'package:class_manager/models/schedule_adjustment.dart';
+import 'package:class_manager/models/agenda_event.dart';
 import 'package:class_manager/theme/lens_material.dart';
 
 /// 应用个性化设置（对应「个性化」页的各项配置）。
@@ -44,6 +47,12 @@ class AppSettings {
 
   /// 个人姓名（用于「我的」页问候语）。
   String userName;
+  HomeViewMode homeViewMode;
+  // A newly added field can be null on instances retained by hot reload:
+  // constructors are not rerun. Keep the public setting non-null even then.
+  final List<String>? _agendaCustomCategories;
+  List<String> get agendaCustomCategories =>
+      _agendaCustomCategories ?? const [];
 
   bool holidayAdjustmentEnabled;
   bool useNationalHolidays;
@@ -64,10 +73,15 @@ class AppSettings {
     this.wallpaperPath,
     this.showGrid = true,
     this.userName = '',
+    this.homeViewMode = HomeViewMode.courses,
+    List<String>? agendaCustomCategories,
     this.holidayAdjustmentEnabled = false,
     this.useNationalHolidays = true,
     List<ScheduleAdjustment> scheduleAdjustments = const [],
-  }) : scheduleAdjustments = List.unmodifiable(scheduleAdjustments);
+  }) : scheduleAdjustments = List.unmodifiable(scheduleAdjustments),
+       _agendaCustomCategories = agendaCustomCategories == null
+           ? null
+           : List.unmodifiable(agendaCustomCategories);
 
   Map<String, Object?> toMap() => {
     'start_date': startDate,
@@ -84,6 +98,8 @@ class AppSettings {
     'wallpaper_path': wallpaperPath,
     'show_grid': showGrid ? 1 : 0,
     'user_name': userName,
+    'home_view_mode': homeViewMode.name,
+    'agenda_custom_categories': jsonEncode(agendaCustomCategories),
     'holiday_adjustment_enabled': holidayAdjustmentEnabled ? 1 : 0,
     'use_national_holidays': useNationalHolidays ? 1 : 0,
     'schedule_adjustments': ScheduleAdjustment.encode(scheduleAdjustments),
@@ -106,6 +122,8 @@ class AppSettings {
     wallpaperPath: m['wallpaper_path'] as String?,
     showGrid: ((m['show_grid'] as int?) ?? 1) == 1,
     userName: (m['user_name'] as String?) ?? '',
+    homeViewMode: HomeViewMode.fromStored(m['home_view_mode']),
+    agendaCustomCategories: _decodeCategories(m['agenda_custom_categories']),
     holidayAdjustmentEnabled:
         ((m['holiday_adjustment_enabled'] as int?) ?? 0) == 1,
     useNationalHolidays: ((m['use_national_holidays'] as int?) ?? 1) == 1,
@@ -130,6 +148,8 @@ class AppSettings {
     bool clearWallpaper = false,
     bool? showGrid,
     String? userName,
+    HomeViewMode? homeViewMode,
+    List<String>? agendaCustomCategories,
     bool? holidayAdjustmentEnabled,
     bool? useNationalHolidays,
     List<ScheduleAdjustment>? scheduleAdjustments,
@@ -150,9 +170,28 @@ class AppSettings {
         : (wallpaperPath ?? this.wallpaperPath),
     showGrid: showGrid ?? this.showGrid,
     userName: userName ?? this.userName,
+    homeViewMode: homeViewMode ?? this.homeViewMode,
+    agendaCustomCategories:
+        agendaCustomCategories ?? this.agendaCustomCategories,
     holidayAdjustmentEnabled:
         holidayAdjustmentEnabled ?? this.holidayAdjustmentEnabled,
     useNationalHolidays: useNationalHolidays ?? this.useNationalHolidays,
     scheduleAdjustments: scheduleAdjustments ?? this.scheduleAdjustments,
   );
+
+  static List<String> _decodeCategories(Object? value) {
+    try {
+      final decoded = jsonDecode(value as String? ?? '[]');
+      return decoded is List
+          ? decoded
+                .whereType<String>()
+                .map((s) => s.trim())
+                .where((s) => s.isNotEmpty)
+                .toSet()
+                .toList()
+          : [];
+    } catch (_) {
+      return [];
+    }
+  }
 }

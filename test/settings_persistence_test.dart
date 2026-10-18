@@ -94,4 +94,54 @@ void main() {
     expect(loaded.saturation, 1.0);
     expect(loaded.showGrid, isTrue);
   });
+
+  test('自定义类型内部为空时复制设置和序列化仍安全', () {
+    final legacy = AppSettings(
+      agendaCustomCategories: null,
+      liquidGlass: false,
+      cardBlur: 0,
+      cardTransparency: 1,
+      userName: '原有用户',
+    );
+    expect(legacy.agendaCustomCategories, isEmpty);
+    final enabled = legacy.copyWith(liquidGlass: true);
+    expect(enabled.liquidGlass, isTrue);
+    expect(enabled.agendaCustomCategories, isEmpty);
+    expect(enabled.cardBlur, 0);
+    expect(enabled.cardTransparency, 1);
+    expect(enabled.userName, '原有用户');
+    expect(enabled.toMap()['agenda_custom_categories'], '[]');
+    expect(enabled.copyWith(liquidGlass: false).liquidGlass, isFalse);
+  });
+
+  test('切换玻璃保留已存类型，列表不可被外部修改', () {
+    final input = ['社团', '志愿服务'];
+    final saved = AppSettings(agendaCustomCategories: input);
+    input.clear();
+    final toggled = saved
+        .copyWith(liquidGlass: false)
+        .copyWith(liquidGlass: true);
+    expect(toggled.agendaCustomCategories, ['社团', '志愿服务']);
+    expect(
+      () => toggled.agendaCustomCategories.add('误修改'),
+      throwsUnsupportedError,
+    );
+    expect(settingsFromRows(rowsOf(toggled)).agendaCustomCategories, [
+      '社团',
+      '志愿服务',
+    ]);
+  });
+
+  test('旧数据库缺失或损坏类型设置时仍能开启液态玻璃', () {
+    for (final value in [null, '', 'null', '{}', 'broken json']) {
+      final loaded = settingsFromRows([
+        {'key': 'liquid_glass', 'value': '0'},
+        if (value != null) {'key': 'agenda_custom_categories', 'value': value},
+      ]);
+      expect(
+        loaded.copyWith(liquidGlass: true).agendaCustomCategories,
+        isEmpty,
+      );
+    }
+  });
 }

@@ -11,8 +11,8 @@ https://pan.quark.cn/s/b57d9dfe897a
 
 ```json
 {
-  "update-time": 202610170013,
-  "latest-version": "v1.0.4",
+  "update-time": 202610181858,
+  "latest-version": "v1.1.0",
   "describe": "本次更新的说明"
 }
 ```
@@ -27,10 +27,10 @@ https://pan.quark.cn/s/b57d9dfe897a
 
 1. 网盘版本高于本机版本：提示「发现新版本，建议更新」。数字按数值比较，例如 `1.0.10 > 1.0.9`。
 2. 版本相同、网盘发布时间更晚：同样提示更新，用于同版本修订。
-3. 版本相同且时间不更新，或者网盘版本较低：显示「当前版本无需更新」，不推荐降级。
+3. 版本相同且时间不更新，或者网盘版本较低：在弹窗独立玻璃栏显示「当前为最新版本，无需更新」，隐藏网盘版本号、更新时间和更新内容，不推荐降级。
 4. 本机版本或发布标识无法读取：明确提示无法核对，不当作已是最新版。
 
-当前安装包的默认发布标识为 `202610170013`，与用户提供的第一份日志对应。发布后续版本时，**新 APK 内的时间必须和网盘 JSON 的 `update-time` 一致**。可以修改 `lib/config/release_metadata.dart` 的默认值，也可以构建时指定：
+当前 v1.1.0 安装包的默认发布标识为 `202610181858`，构建号为15；配套日志见示例文件及 `artifacts/更新日志.json`。发布后续版本时，**新 APK 内的时间必须和网盘 JSON 的 `update-time` 一致**。可以修改 `lib/config/release_metadata.dart` 的默认值，也可以构建时指定：
 
 ```powershell
 flutter build apk --release --dart-define=APP_RELEASE_UPDATE_TIME=202610180900

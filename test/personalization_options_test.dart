@@ -3,16 +3,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:provider/provider.dart';
 
 import 'package:class_manager/screens/personalization_screen.dart';
+import 'package:class_manager/models/app_settings.dart';
 import 'package:class_manager/state/app_state.dart';
 
 /// 个性化页新增项：显示网格开关、个人姓名输入。
 void main() {
-  Future<AppState> pumpPersonalization(WidgetTester tester) async {
+  Future<AppState> pumpPersonalization(
+    WidgetTester tester, {
+    AppSettings? settings,
+  }) async {
     tester.view.physicalSize = const Size(1080, 2400);
     tester.view.devicePixelRatio = 3.0;
     addTearDown(tester.view.reset);
 
     final state = AppState.memory();
+    if (settings != null) state.settings = settings;
     await tester.pumpWidget(
       ChangeNotifierProvider.value(
         value: state,
@@ -52,5 +57,35 @@ void main() {
     await tester.enterText(find.byType(TextField), '闫梓萱');
     await tester.pump();
     expect(state.settings.userName, '闫梓萱');
+  });
+
+  testWidgets('旧设置无类型列表时点击液态玻璃开关可正常开启关闭', (tester) async {
+    final state = await pumpPersonalization(
+      tester,
+      settings: AppSettings(
+        liquidGlass: false,
+        agendaCustomCategories: null,
+        cardBlur: 0,
+        userName: '保留姓名',
+      ),
+    );
+    final toggle = find.descendant(
+      of: find
+          .ancestor(of: find.text('液态玻璃'), matching: find.byType(Row))
+          .first,
+      matching: find.byType(Switch),
+    );
+    await tester.ensureVisible(toggle);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(state.settings.liquidGlass, isTrue);
+    expect(state.settings.agendaCustomCategories, isEmpty);
+    expect(state.settings.userName, '保留姓名');
+    expect(state.settings.cardBlur, 0);
+    expect(tester.takeException(), isNull);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    expect(state.settings.liquidGlass, isFalse);
+    expect(tester.takeException(), isNull);
   });
 }
